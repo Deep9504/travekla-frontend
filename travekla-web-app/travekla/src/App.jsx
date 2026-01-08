@@ -5,7 +5,7 @@ import {
 } from 'antd';
 import { UserOutlined, LogoutOutlined, LoginOutlined } from "@ant-design/icons";
 
-// --- PAGES ---
+// --- PAGES GOES HERE ---
 import CreateGroup from "./pages/CreateGroup";
 import Home from "./pages/Home"; 
 import AdvisorProfile from "./pages/AdvisorProfile";
