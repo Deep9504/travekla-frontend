@@ -91,10 +91,37 @@ export const GroupProvider = ({ children }) => {
       return false;
     }
   };
+  // 4. GET MY CREATED TRIPS
+  const getUserTrips = async (userId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/groups/user/${userId}`);
+      return await response.json();
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  };
+
+  // 5. GET MY JOINED TRIPS
+  const getJoinedTrips = async (userId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/groups/joined/${userId}`);
+      return await response.json();
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  };
 
   return (
-    <GroupContext.Provider value={{ groups, addGroup, joinGroup, loading }}>
-      {children}
+<GroupContext.Provider value={{ 
+    groups, 
+    addGroup, 
+    joinGroup, 
+    getUserTrips,  
+    getJoinedTrips, 
+    loading 
+}}>      {children}
     </GroupContext.Provider>
   );
 };

@@ -16,7 +16,8 @@ app.use(express.json());
 // --- ROUTES ---
 app.use('/api/auth', require('./routes/auth'));      // You have this
 // 👇👇 ADD THIS LINE 👇👇
-app.use('/api/groups', require('./routes/groups'));  // You are MISSING this!
+app.use('/api/groups', require('./routes/groups'));
+app.use('/api/advisors', require('./routes/advisors'));  // You are MISSING this!
 // ------------------------------------------------
 
 // --- DATABASE CONNECTION ---

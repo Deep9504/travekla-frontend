@@ -56,5 +56,25 @@ router.put('/:id/join', async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+  // --- 4. GET TRIPS BY CREATOR (My Created Trips) ---
+router.get('/user/:id', async (req, res) => {
+  try {
+    const groups = await Group.find({ 'creator.id': req.params.id }).sort({ createdAt: -1 });
+    res.json(groups);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// --- 5. GET TRIPS JOINED BY USER ---
+router.get('/joined/:id', async (req, res) => {
+  try {
+    // Find groups where the 'members' array contains this User ID
+    const groups = await Group.find({ members: req.params.id }).sort({ createdAt: -1 });
+    res.json(groups);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 });
 module.exports = router;
