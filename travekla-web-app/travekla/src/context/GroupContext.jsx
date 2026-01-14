@@ -21,8 +21,6 @@ export const GroupProvider = ({ children }) => {
         }
       } catch (error) {
         console.error("Server connection failed:", error);
-        // Only show error if we really can't connect, to avoid annoyance
-        // message.error("Could not connect to backend"); 
       } finally {
         setLoading(false);
       }
@@ -31,7 +29,7 @@ export const GroupProvider = ({ children }) => {
     fetchGroups();
   }, []);
 
-  // 2. ADD NEW GROUP (Connect to Backend)
+  // 2. ADD NEW GROUP
   const addGroup = async (newGroupData) => {
     try {
       const response = await fetch('http://localhost:5000/api/groups', {
@@ -43,8 +41,7 @@ export const GroupProvider = ({ children }) => {
       const savedGroup = await response.json();
 
       if (response.ok) {
-        // Update local list instantly
-        setGroups([savedGroup, ...groups]);
+        setGroups(prev => [savedGroup, ...prev]); // Safer update
         message.success("Group created successfully!");
         return true;
       } else {
@@ -58,39 +55,45 @@ export const GroupProvider = ({ children }) => {
     }
   };
 
- // 3. JOIN GROUP (Updated)
+  // 3. JOIN GROUP
   const joinGroup = async (groupId) => {
-    // Get the current user ID from LocalStorage (safest way)
-    const storedUser = JSON.parse(localStorage.getItem('travekla_user'));
-    if (!storedUser) return false;
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token'); 
+
+    if (!storedUser) {
+        message.error("Please login first");
+        return { success: false };
+    }
 
     try {
       const response = await fetch(`http://localhost:5000/api/groups/${groupId}/join`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: storedUser.id || storedUser._id }) // Send ID
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId: storedUser.id || storedUser._id })
       });
 
-      const updatedGroupData = await response.json();
+      const data = await response.json();
 
       if (response.ok) {
+        // Update the specific group in the local list
         setGroups(prevGroups => 
           prevGroups.map(group => 
-            (group._id === groupId || group.id === groupId) ? updatedGroupData : group 
+            (group._id === groupId || group.id === groupId) ? data : group 
           )
         );
-        message.success("You joined the trip! 🎒");
-        return true;
+        return { success: true };
       } else {
-        message.error(updatedGroupData.message || "Failed to join");
-        return false;
+        return { success: false, message: data.message };
       }
     } catch (error) {
       console.error(error);
-      message.error("Server Error");
-      return false;
+      return { success: false, message: "Server Error" };
     }
   };
+
   // 4. GET MY CREATED TRIPS
   const getUserTrips = async (userId) => {
     try {
@@ -113,15 +116,118 @@ export const GroupProvider = ({ children }) => {
     }
   };
 
+  // 6. SEARCH TRIPS
+  const searchGroups = async (query) => {
+    try {
+      const url = query 
+        ? `http://localhost:5000/api/groups?search=${query}`
+        : 'http://localhost:5000/api/groups';
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      setGroups(data);
+    } catch (error) {
+      console.error("Search failed:", error);
+    }
+  };
+
+  // 7. DELETE GROUP (Updated for Admin Feature)
+  const deleteGroup = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/groups/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Safer state update
+        setGroups(prevGroups => prevGroups.filter(group => group._id !== id && group.id !== id));
+        return { success: true };
+      }
+      return { success: false };
+    } catch (error) {
+      console.error("Delete failed:", error);
+      return { success: false };
+    }
+  };
+
+  // 8. APPROVE MEMBER
+  const approveMember = async (groupId, userId) => {
+    try {
+      await fetch(`http://localhost:5000/api/groups/${groupId}/approve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+      
+      // Refresh list to show updated status
+      const response = await fetch('http://localhost:5000/api/groups');
+      const data = await response.json();
+      setGroups(data);
+      message.success("Member Approved! 🎉");
+    } catch (error) {
+      console.error(error);
+      message.error("Failed to approve");
+    }
+  };
+
+  // 9. REMOVE MEMBER
+  const removeMember = async (groupId, userId) => {
+    try {
+      await fetch(`http://localhost:5000/api/groups/${groupId}/remove`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+
+      // Refresh list
+      const response = await fetch('http://localhost:5000/api/groups');
+      const data = await response.json();
+      setGroups(data);
+      message.info("Member Removed.");
+    } catch (error) {
+      console.error(error);
+      message.error("Failed to remove");
+    }
+  };
+
+  // 10. ADD EXPENSE
+  const addExpense = async (groupId, expenseData) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/groups/${groupId}/expense`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(expenseData)
+      });
+      
+      if (response.ok) {
+        const updatedGroup = await response.json();
+        // Update local state
+        setGroups(prev => prev.map(g => g._id === groupId ? updatedGroup : g));
+        message.success("Expense Added!");
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  };
+
   return (
-<GroupContext.Provider value={{ 
-    groups, 
-    addGroup, 
-    joinGroup, 
-    getUserTrips,  
-    getJoinedTrips, 
-    loading 
-}}>      {children}
+    <GroupContext.Provider value={{ 
+      groups, 
+      loading,
+      addGroup, 
+      joinGroup, 
+      getUserTrips,  
+      getJoinedTrips, 
+      searchGroups,
+      deleteGroup,
+      approveMember, 
+      removeMember,
+      addExpense   
+    }}>      
+      {children}
     </GroupContext.Provider>
   );
 };

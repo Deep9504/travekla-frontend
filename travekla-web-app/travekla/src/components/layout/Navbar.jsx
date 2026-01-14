@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { Layout, Menu, Button, Avatar, Dropdown, message } from 'antd';
-import { HomeOutlined, RocketOutlined, UserOutlined, LogoutOutlined, LoginOutlined, SearchOutlined,CrownFilled } from '@ant-design/icons';
+import { HomeOutlined, RocketOutlined, UserOutlined, LogoutOutlined, LoginOutlined, SearchOutlined,CrownFilled,SafetyCertificateOutlined } from '@ant-design/icons';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 
@@ -49,6 +49,11 @@ const Navbar = () => {
       key: '/gold', 
       icon: <CrownFilled style={{ color: '#faad14' }} /> 
     },
+    // { 
+    //   label: <Link to="/admin" style={{ color: 'red' }}>Admin</Link>, 
+    //   key: '/admin', 
+    //   icon: <SafetyCertificateOutlined style={{ color: 'red' }} /> 
+    // },
   ];
 
   return (

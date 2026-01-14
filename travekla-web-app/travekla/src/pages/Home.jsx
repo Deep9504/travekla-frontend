@@ -1,17 +1,18 @@
-import React, { useState, useContext, useEffect } from 'react';
-import { Row, Col, Input, Typography, Button, Alert, Tag, Carousel, Card, Tabs, Empty } from 'antd';
+import React, { useState, useContext } from 'react';
+import { Row, Col, Typography, Button, Input, Card, Carousel, Tabs, Tag, Alert, Empty, Avatar, Progress, Modal, message } from 'antd';
 import { 
-  SearchOutlined, RocketOutlined, InfoCircleOutlined, FireOutlined, 
-  EnvironmentOutlined, TeamOutlined, SafetyCertificateOutlined, 
-  BankOutlined, CrownOutlined 
+  SearchOutlined, RocketOutlined, FireOutlined, DeleteOutlined,
+  BankOutlined, CrownOutlined, SafetyCertificateOutlined,
+  CalendarOutlined, TeamOutlined, CheckCircleFilled, SettingOutlined, ClockCircleOutlined, HistoryOutlined
 } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
-import GroupCard from '../components/group/GroupCard';
+import { Link, useNavigate } from 'react-router-dom';
 import { GroupContext } from '../context/GroupContext'; 
-// Ensure this file exists, otherwise remove this import and the 'bestPlaces' logic
-import { getBestForSeason } from '../utils/travelLogic'; 
+import { AuthContext } from '../context/AuthContext'; 
+import { getBestForSeason } from '../utils/travelLogic'; // Optional: keep if you have it
 
 const { Title, Text, Paragraph } = Typography;
+const { Meta } = Card;
+const { Search } = Input;
 
 // --- MOCK DATA: LIVE ACTIVITY TICKER ---
 const liveActivities = [
@@ -22,43 +23,200 @@ const liveActivities = [
 ];
 
 const Home = () => {
-  const contextData = useContext(GroupContext);
+  const { groups, loading, searchGroups, deleteGroup } = useContext(GroupContext); 
+  const { user } = useContext(AuthContext); 
+  const navigate = useNavigate();
+  
   const [searchText, setSearchText] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   
-  // If you deleted 'travelLogic.js', remove this line and set bestPlaces = []
-  const bestPlaces = getBestForSeason ? getBestForSeason() : ["Goa", "Manali", "Kerala"];
+  // Safe fallback if utility function is missing
+  const bestPlaces = typeof getBestForSeason === 'function' ? getBestForSeason() : ["Goa", "Manali", "Kerala"];
 
-  if (!contextData) return <div style={{ padding: 50, textAlign: 'center' }}>Loading...</div>;
-  const { groups } = contextData;
+  // --- HELPER: Normalize IDs (Prevents ID mismatch bugs) ---
+  const normalizeId = (val) => {
+    if (!val) return "undefined";
+    if (typeof val === 'string') return val;
+    if (val._id) return normalizeId(val._id);
+    if (val.id) return normalizeId(val.id);
+    return String(val);
+  };
 
-  // --- FILTER LOGIC: SEARCH + CATEGORY ---
+  // --- DELETE HANDLER (Admin/Creator) ---
+  const handleDelete = (e, groupId) => {
+    e.stopPropagation(); // Stop click from opening the trip details
+    Modal.confirm({
+      title: 'Delete this trip?',
+      content: 'This action cannot be undone.',
+      okText: 'Yes, Delete',
+      okType: 'danger',
+      onOk: async () => {
+        if (deleteGroup) {
+             const res = await deleteGroup(groupId);
+             if(res.success) message.success("Trip deleted successfully");
+             else message.error("Failed to delete trip");
+        } else {
+             message.error("Delete function not connected yet");
+        }
+      }
+    });
+  };
+
+  // 1. HANDLE SEARCH
+  const handleSearch = (value) => {
+    searchGroups(value);
+  };
+
+  const onInputChange = (e) => {
+    const value = e.target.value;
+    setSearchText(value);
+    if (value === "") searchGroups(""); 
+  };
+
+  // --- FILTER & SPLIT LOGIC ---
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to midnight for accurate comparison
+
+  // 1. Filter by Search & Category
   const filteredGroups = groups?.filter(group => {
-    // Safety check: ensure fields exist before calling toLowerCase()
-    const from = group.from || "";
-    const to = group.to || "";
-    const desc = group.description || "";
-
-    const matchesSearch = to.toLowerCase().includes(searchText.toLowerCase()) || 
-                          from.toLowerCase().includes(searchText.toLowerCase());
-    
-    // Category matching (Simulated based on description/location keywords)
-    const matchesCategory = activeCategory === 'All' ? true : 
-                            (desc + to).toLowerCase().includes(activeCategory.toLowerCase());
-
-    return matchesSearch && matchesCategory;
+    if (activeCategory === 'All') return true;
+    const content = (group.description + " " + group.to + " " + group.from).toLowerCase();
+    return content.includes(activeCategory.toLowerCase());
   });
 
+  // 2. Split into Upcoming vs Past
+  const upcomingGroups = filteredGroups?.filter(g => new Date(g.date) >= today);
+  const pastGroups = filteredGroups?.filter(g => new Date(g.date) < today);
+
+  // --- RENDER CARD FUNCTION ---
+  const renderTripCard = (group, isPast = false) => {
+    // --- 🔒 CARD STATUS LOGIC ---
+    const currentUserId = normalizeId(user);
+    const creatorId = normalizeId(group.creator?.id || group.creator);
+    
+    // 1. IS GUEST? (Not Logged In)
+    const isGuest = !user; 
+
+    // 2. IS CREATOR?
+    const isCreator = !isGuest && (currentUserId === creatorId);
+    
+    // 3. IS ADMIN?
+    const isAdmin = user?.role === 'admin';
+
+    // 4. IS MEMBER?
+    const isMember = !isGuest && group.members?.some(m => normalizeId(m) === currentUserId);
+    
+    // 5. IS PENDING?
+    const isPending = !isGuest && group.pendingMembers?.some(m => normalizeId(m) === currentUserId);
+    
+    // 6. IS FULL?
+    const isFull = (group.members?.length || 0) >= group.capacity;
+
+    return (
+    <Col key={group._id || group.id} xs={24} sm={12} md={8}>
+        <Card
+            hoverable
+            style={{ 
+                borderRadius: 12, 
+                overflow: 'hidden', 
+                boxShadow: '0 4px 12px rgba(0,0,0,0.05)', 
+                height: '100%',
+                opacity: isPast ? 0.7 : 1, // 👈 Fade out past trips
+                filter: isPast ? 'grayscale(80%)' : 'none' // 👈 Greyscale past trips
+            }}
+            cover={
+            <div style={{ height: 200, background: '#f0f0f0', position: 'relative' }}>
+                <img 
+                alt={group.to} 
+                src={group.image || "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=2070&auto=format&fit=crop"} 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                />
+                
+                {/* PRICE TAG */}
+                <Tag color="#fa541c" style={{ position: 'absolute', top: 15, right: 15, borderRadius: 20, border: 'none', padding: '2px 10px', fontWeight: 'bold' }}>
+                ₹{group.price || 5000}
+                </Tag>
+
+                {/* 🗑️ ADMIN DELETE BUTTON (Only if Admin or Creator) */}
+                {(isAdmin || isCreator) && (
+                    <Button 
+                        danger 
+                        shape="circle" 
+                        icon={<DeleteOutlined />} 
+                        style={{ position: 'absolute', top: 15, left: 15, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', zIndex: 10 }}
+                        onClick={(e) => handleDelete(e, group._id || group.id)}
+                    />
+                )}
+
+                {/* PAST TRIP OVERLAY */}
+                {isPast && (
+                    <div style={{ position: 'absolute', bottom: 0, width: '100%', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '5px 10px', textAlign: 'center', fontWeight: 'bold' }}>
+                        COMPLETED
+                    </div>
+                )}
+            </div>
+            }
+            actions={[
+            // --- BUTTON LOGIC START ---
+            isPast ? (
+                <Button type="text" icon={<HistoryOutlined />} disabled>Finished</Button>
+            ) : isCreator ? (
+                // 👇 FIX: Redirect Creator to DETAILS PAGE (so they can see Chat/Gallery)
+                <Button type="text" style={{ color: '#faad14', fontWeight: 'bold' }} onClick={() => navigate(`/group/${group._id || group.id}`)}>
+                    View Trip ➜
+                </Button>
+            ) : isMember ? (
+                <Button type="text" icon={<CheckCircleFilled />} style={{ color: 'green' }} onClick={() => navigate(`/group/${group._id || group.id}`)}>
+                    Joined
+                </Button>
+            ) : isPending ? (
+                <Button type="text" icon={<ClockCircleOutlined />} style={{ color: 'orange' }} disabled>
+                    Requested
+                </Button>
+            ) : isFull ? (
+                    <Button type="text" disabled>Full</Button>
+            ) : (
+                <Button type="primary" ghost style={{ borderColor: '#fa541c', color: '#fa541c' }} onClick={() => navigate(`/group/${group._id || group.id}`)}>
+                    View Details
+                </Button>
+            )
+            // --- BUTTON LOGIC END ---
+            ]}
+        >
+            <Meta
+            avatar={<Avatar src={group.creator?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=creator"} />}
+            title={
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{group.to}</span>
+                    <span style={{ fontSize: 12, color: '#8c8c8c', fontWeight: 'normal' }}>
+                        <TeamOutlined /> {group.members?.length || 0}/{group.capacity}
+                    </span>
+                </div>
+            }
+            description={
+                <div>
+                    <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <CalendarOutlined /> {new Date(group.date || Date.now()).toLocaleDateString()}
+                    </div>
+                    <Progress percent={Math.round(((group.members?.length || 0) / group.capacity) * 100)} size="small" showInfo={false} strokeColor={isPast ? "#bfbfbf" : "#fa541c"} />
+                </div>
+            }
+            />
+        </Card>
+    </Col>
+    );
+  };
+
   return (
-    <div>
+    <div style={{ minHeight: '100vh', background: '#fff' }}>
+      
       {/* 1. HERO SECTION */}
       <div style={{
-        background: 'linear-gradient(135deg, #1f4037 0%, #99f2c8 100%)',
-        padding: '60px 20px 100px 20px', // Extra padding bottom for overlap
+        background: 'linear-gradient(135deg, #fa541c 0%, #ffbb96 100%)', // Travekla Orange Theme
+        padding: '60px 20px 100px 20px', 
         textAlign: 'center',
         color: 'white',
         borderRadius: '0 0 50px 50px',
-        marginBottom: 0,
         position: 'relative'
       }}>
         <Title style={{ color: 'white', fontSize: 'clamp(2rem, 5vw, 3.5rem)', margin: 0 }}>Travekla</Title>
@@ -73,8 +231,13 @@ const Home = () => {
                <span>
                  <b>🌿 Best in {new Date().toLocaleString('default', { month: 'long' })}:</b> 
                  {bestPlaces.map(place => (
-                    <Tag color="green" key={place} style={{ marginLeft: 5, cursor: 'pointer', border: 'none' }} onClick={() => setSearchText(place)}>
-                       {place}
+                    <Tag 
+                        color="green" 
+                        key={place} 
+                        style={{ marginLeft: 5, cursor: 'pointer', border: 'none' }} 
+                        onClick={() => { setSearchText(place); searchGroups(place); }}
+                    >
+                        {place}
                     </Tag>
                  ))}
                </span>
@@ -87,13 +250,15 @@ const Home = () => {
 
         {/* SEARCH BAR */}
         <div style={{ marginTop: 30, display: 'flex', justifyContent: 'center' }}>
-          <Input 
-            size="large" 
+          <Search 
             placeholder="Search destination (e.g. Goa, Manali)" 
-            prefix={<SearchOutlined style={{ color: '#aaa' }} />} 
-            style={{ maxWidth: 500, borderRadius: '50px', height: 50, boxShadow: '0 10px 20px rgba(0,0,0,0.1)' }}
-            onChange={(e) => setSearchText(e.target.value)}
-            value={searchText} 
+            allowClear
+            enterButton="Search"
+            size="large"
+            onSearch={handleSearch}
+            onChange={onInputChange}
+            value={searchText}
+            style={{ maxWidth: 500 }}
           />
         </div>
 
@@ -105,7 +270,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* 2. LIVE TICKER & CATEGORIES (Floating Card Effect) */}
+      {/* 2. LIVE TICKER & CATEGORIES */}
       <div style={{ maxWidth: 1000, margin: '-50px auto 40px auto', padding: '0 20px', position: 'relative', zIndex: 2 }}>
         <Card style={{ borderRadius: 16, boxShadow: '0 10px 30px rgba(0,0,0,0.1)', border: 'none' }}>
           
@@ -137,37 +302,42 @@ const Home = () => {
         </Card>
       </div>
 
-      {/* 3. TRIP GRID (REAL DATA) */}
+      {/* 3. TRIP GRID (SPLIT INTO UPCOMING & PAST) */}
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px 40px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <Title level={3} style={{ borderLeft: '4px solid #fa541c', paddingLeft: 10, margin: 0 }}>
-            Upcoming Trips
-          </Title>
-          <Text type="secondary">{filteredGroups?.length || 0} trips found</Text>
-        </div>
         
-        <Row gutter={[24, 24]}>
-          {filteredGroups?.map(group => (
-            <Col key={group._id || group.id} xs={24} sm={12} md={8}>
-              {/* 👇 UPDATED LINK: Uses _id (MongoDB) instead of id */}
-              <Link to={`/group/${group._id || group.id}`}>
-                <GroupCard groupData={group} />
-              </Link>
-            </Col>
-          ))}
-          
-          {filteredGroups?.length === 0 && (
-             <Col span={24} style={{ textAlign: 'center', padding: 40 }}>
-               <Empty description="No trips found. Be the first to create one!" />
-               <Link to="/create-group">
-                  <Button type="primary" style={{ marginTop: 10 }}>Create Trip</Button>
-               </Link>
-             </Col>
-          )}
-        </Row>
+        {loading ? (
+             <div style={{textAlign: 'center', padding: 50}}>Loading trips...</div>
+        ) : (
+            /* TABS FOR UPCOMING VS FINISHED */
+            <Tabs defaultActiveKey="upcoming" centered items={[
+                {
+                    key: 'upcoming',
+                    label: <span style={{fontSize: 16}}>🚀 Upcoming ({upcomingGroups?.length || 0})</span>,
+                    children: (
+                        <Row gutter={[24, 24]} style={{ marginTop: 20 }}>
+                            {upcomingGroups?.length > 0 ? upcomingGroups.map(g => renderTripCard(g, false)) : (
+                                <Col span={24} style={{ textAlign: 'center', padding: 40 }}>
+                                    <Empty description="No upcoming trips found." />
+                                    <Button onClick={() => { setSearchText(""); searchGroups(""); }}>Clear Search</Button>
+                                </Col>
+                            )}
+                        </Row>
+                    )
+                },
+                {
+                    key: 'past',
+                    label: <span style={{fontSize: 16}}>🏁 Finished Trips ({pastGroups?.length || 0})</span>,
+                    children: (
+                        <Row gutter={[24, 24]} style={{ marginTop: 20 }}>
+                            {pastGroups?.length > 0 ? pastGroups.map(g => renderTripCard(g, true)) : <Empty description="No history yet" />}
+                        </Row>
+                    )
+                }
+            ]} />
+        )}
       </div>
 
-      {/* 4. WHY TRAVEKLA (Trust Signals) */}
+      {/* 4. WHY TRAVEKLA */}
       <div style={{ background: '#f0f5ff', padding: '60px 20px', marginTop: 40 }}>
         <div style={{ maxWidth: 1000, margin: '0 auto', textAlign: 'center' }}>
           <Title level={2}>Why Travel with Travekla?</Title>

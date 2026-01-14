@@ -1,3 +1,20 @@
+# Dependencies - Ignore in root and all subdirectories
+node_modules/
+**/node_modules/
+
+# Environment Variables - IMPORTANT: Never commit these
+.env
+.env.local
+.env.*.local
+server/.env
+travekla/.env
+
+# Build Outputs
+dist/
+dist-ssr/
+build/
+out/
+
 # Logs
 logs
 *.log
@@ -7,12 +24,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# Editor and System files
 .vscode/*
 !.vscode/extensions.json
 .idea

@@ -1,91 +1,96 @@
 import React, { useState, useContext } from 'react';
-import { Card, Tabs, Form, Input, Button, Typography, message } from 'antd';
-import { UserOutlined, LockOutlined, GlobalOutlined, SolutionOutlined, SmileOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, Typography, message, Divider } from 'antd';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google'; // 👈 IMPORT GOOGLE COMPONENT
 
 const { Title, Text } = Typography;
 
 const Login = () => {
-  const { loginUser, registerUser } = useContext(AuthContext);
+  const { login } = useContext(AuthContext);
   const navigate = useNavigate();
-  
-  // State to toggle between "Traveler" and "Advisor" tabs
-  const [activeRole, setActiveRole] = useState('traveler'); 
-  // State to toggle between "Login" and "Sign Up" modes
-  const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleFinish = async (values) => {
+  // --- NORMAL EMAIL/PASSWORD LOGIN ---
+  const onFinish = async (values) => {
     setLoading(true);
-    let success = false;
-
-    if (isSignup) {
-      // --- REGISTER ---
-      success = await registerUser(values.name, values.email, values.password, activeRole);
-      if (success) {
-        setIsSignup(false); // Switch to login view after successful signup
-      }
-    } else {
-      // --- LOGIN ---
-      success = await loginUser(values.email, values.password);
-      if (success) {
-        // Redirect based on role
-        if (activeRole === 'advisor') navigate('/advisor-dashboard');
-        else navigate('/profile');
-      }
-    }
+    const result = await login(values.email, values.password);
     setLoading(false);
+
+    if (result.success) {
+      message.success("Welcome back!");
+      navigate('/'); 
+    } else {
+      message.error(result.message);
+    }
   };
 
-  const AuthForm = () => (
-    <Form layout="vertical" onFinish={handleFinish}>
-      
-      {/* Name field is only visible during Sign Up */}
-      {isSignup && (
-        <Form.Item name="name" rules={[{ required: true, message: 'Please input your Name!' }]}>
-          <Input prefix={<SmileOutlined />} placeholder="Full Name" size="large" />
-        </Form.Item>
-      )}
+  // --- 🔥 GOOGLE LOGIN HANDLER ---
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+        // Send the token we got from Google to OUR Backend
+        const res = await fetch('http://localhost:5000/api/auth/google', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: credentialResponse.credential })
+        });
+        const data = await res.json();
 
-      <Form.Item name="email" rules={[{ required: true, message: 'Please input your Email!' }]}>
-        <Input prefix={<UserOutlined />} placeholder="Email" size="large" />
-      </Form.Item>
-      
-      <Form.Item name="password" rules={[{ required: true, message: 'Please input your Password!' }]}>
-        <Input.Password prefix={<LockOutlined />} placeholder="Password" size="large" />
-      </Form.Item>
-
-      <Button type="primary" htmlType="submit" size="large" block loading={loading}>
-        {isSignup ? "Create Account" : "Log In"}
-      </Button>
-    </Form>
-  );
+        if (data.success) {
+            // Manually save to storage & force refresh to update Context
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            message.success("Google Login Successful! 🎉");
+            window.location.href = "/"; // Force refresh to load user into context
+        } else {
+            message.error("Google Login Failed");
+        }
+    } catch (error) {
+        console.error(error);
+        message.error("Server Error");
+    }
+  };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', background: '#f0f2f5' }}>
-      <Card style={{ width: 400, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <Title level={2}>Travekla</Title>
-          <Text type="secondary">
-            {isSignup ? `Join as a ${activeRole}` : "Welcome back"}
-          </Text>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f0f2f5' }}>
+      <Card style={{ width: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', borderRadius: 10 }}>
+        <div style={{ textAlign: 'center', marginBottom: 30 }}>
+          <Title level={2} style={{ color: '#fa541c' }}>Travekla</Title>
+          <Text type="secondary">Welcome back, traveler!</Text>
         </div>
 
-        <Tabs 
-          activeKey={activeRole} 
-          onChange={setActiveRole}
-          centered
-          items={[
-            { key: 'traveler', label: <span><GlobalOutlined /> Traveler</span>, children: <AuthForm /> },
-            { key: 'advisor', label: <span><SolutionOutlined /> Advisor</span>, children: <AuthForm /> },
-          ]}
-        />
+        <Form name="login_form" onFinish={onFinish} layout="vertical" size="large">
+          <Form.Item name="email" rules={[{ required: true, message: 'Please input your Email!' }]}>
+            <Input prefix={<UserOutlined />} placeholder="Email" />
+          </Form.Item>
 
-        <div style={{ textAlign: 'center', marginTop: 15 }}>
-          <Button type="link" onClick={() => setIsSignup(!isSignup)}>
-            {isSignup ? "Already have an account? Log In" : "New here? Create Account"}
-          </Button>
+          <Form.Item name="password" rules={[{ required: true, message: 'Please input your Password!' }]}>
+            <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+          </Form.Item>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit" block loading={loading} style={{ background: '#fa541c', borderColor: '#fa541c' }}>
+              Log in
+            </Button>
+          </Form.Item>
+        </Form>
+
+        {/* 👇 DIVIDER & GOOGLE BUTTON */}
+        <Divider plain>OR</Divider>
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => message.error('Login Failed')}
+                theme="filled_blue"
+                shape="pill"
+                width="350"
+            />
+        </div>
+
+        <div style={{ textAlign: 'center' }}>
+          <Text>Don't have an account? <Link to="/register">Sign up now</Link></Text>
         </div>
       </Card>
     </div>
