@@ -1,7 +1,9 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const bookingRoutes = require('./routes/bookings');
 require('dotenv').config();
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 
@@ -18,6 +20,8 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/groups', require('./routes/groups'));
 app.use('/api/advisors', require('./routes/advisors')); // Ensure this file exists
 app.use('/api/ai', require('./routes/ai'));             // Ensure this file exists
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 👇👇 ADD THIS NEW LINE FOR ADMIN 👇👇
 app.use('/api/admin', require('./routes/admin'));

@@ -7,16 +7,22 @@ const UserSchema = new mongoose.Schema({
   role: { type: String, enum: ['traveler', 'admin', 'advisor'], default: 'traveler' }, // 👈 Added 'advisor'
   avatar: String,
   
-  // KYC Fields
+ // KYC & Verification
   kycStatus: { type: String, enum: ['new', 'pending', 'verified', 'rejected'], default: 'new' },
   kycDocument: String,
-
-  // 🎓 ADVISOR SPECIFIC FIELDS
-  expertise: [{ type: String }], // e.g. ["Visa", "Budget", "Luxury", "Solo"]
-  bio: { type: String, default: "Experienced traveler helping you plan better." },
+  
+  // 🌟 NEW: VERIFICATION FIELDS
+  isVerified: { type: Boolean, default: false }, // The "Blue Tick" status
+  verificationRequestDate: Date,
+  socialMediaLink: String, // For the backend check
+  
+  // ADVISOR METRICS
+  expertise: [{ type: String }], 
+  bio: { type: String, default: "Experienced traveler." },
   hourlyRate: { type: Number, default: 499 },
-  rating: { type: Number, default: 4.8 },
+  rating: { type: Number, default: 0 },
   reviews: { type: Number, default: 0 },
+  adviceCount: { type: Number, default: 0 }, // 🌟 Used for Ranking (Top of list)
 
   createdAt: { type: Date, default: Date.now }
 });

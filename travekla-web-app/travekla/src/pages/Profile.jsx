@@ -1,23 +1,27 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { Card, Avatar, Typography, Button, Tabs, Tag, Input, message, Alert, Result, Spin } from 'antd';
-import { UserOutlined, SafetyCertificateFilled, UploadOutlined, CheckCircleFilled, ReloadOutlined } from '@ant-design/icons';
+import { Card, Avatar, Typography, Button, Tabs, Tag, Input, message, Alert, Steps, Switch, Modal } from 'antd';
+import { 
+  UserOutlined, SafetyCertificateFilled, UploadOutlined, 
+  CheckCircleFilled, ReloadOutlined, InstagramOutlined, CreditCardOutlined 
+} from '@ant-design/icons';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
+const { Step } = Steps;
 
 const Profile = () => {
   const { user, logout, updateUser } = useContext(AuthContext);
   const navigate = useNavigate();
   
   const [docUrl, setDocUrl] = useState("");
+  const [socialLink, setSocialLink] = useState("");
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false); // State for refresh spinner
+  const [refreshing, setRefreshing] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
-  // --- 🔥 AUTO-REFRESH USER DATA ON LOAD 🔥 ---
-  useEffect(() => {
-    fetchLatestUserData();
-  }, []);
+  // --- AUTO-REFRESH USER DATA ---
+  useEffect(() => { fetchLatestUserData(); }, []);
 
   const fetchLatestUserData = async () => {
     if (!user) return;
@@ -26,36 +30,43 @@ const Profile = () => {
         const userId = user.id || user._id;
         const res = await fetch(`http://localhost:5000/api/auth/user/${userId}`);
         const freshUser = await res.json();
-        
-        if (freshUser && updateUser) {
-            updateUser(freshUser); // Update Context with fresh DB data
-        }
-    } catch (err) {
-        console.log("Failed to refresh user data");
-    }
+        if (freshUser && updateUser) updateUser(freshUser); 
+    } catch (err) { console.log("Refresh error"); }
     setRefreshing(false);
   };
-  // ---------------------------------------------
 
-  if (!user) return <div style={{padding:50, textAlign:'center'}}>Please Login</div>;
+  // --- 1. ROLE SWITCH ---
+  const handleRoleSwitch = async (checked) => {
+    const newRole = checked ? 'advisor' : 'traveler';
+    try {
+        const userId = user.id || user._id;
+        await fetch('http://localhost:5000/api/auth/switch-role', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, role: newRole })
+        });
+        message.success(`Switched to ${newRole.toUpperCase()}`);
+        fetchLatestUserData();
+    } catch (err) { message.error("Failed to switch"); }
+  };
 
+  // --- 2. KYC SUBMIT ---
   const handleSubmitKYC = async () => {
-    if (!docUrl) return message.error("Please enter a document URL");
+    if (!docUrl) return message.error("Enter ID URL");
     setLoading(true);
-
     try {
       const userId = user.id || user._id;
       const res = await fetch('http://localhost:5000/api/auth/submit-kyc', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userId, documentUrl: docUrl })
+        body: JSON.stringify({ userId, documentUrl: docUrl })
       });
       const data = await res.json();
       
       if (data.success) {
-        message.success("KYC Submitted!");
-        if (updateUser) updateUser(data.user);
-        setDocUrl(""); 
+        // 👇 CORRECTED MESSAGE
+        message.success("KYC Submitted! Waiting for Admin Approval.");
+        fetchLatestUserData();
       }
     } catch (err) {
       message.error("Submission failed");
@@ -63,80 +74,172 @@ const Profile = () => {
     setLoading(false);
   };
 
-  const kycStatus = user.kycStatus ? user.kycStatus.toLowerCase() : 'new';
+  // --- 3. FINAL VERIFICATION ---
+  const handleFinalVerification = async () => {
+    setLoading(true);
+    const userId = user.id || user._id;
+    
+    const res = await fetch('http://localhost:5000/api/auth/verify-advisor', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            userId, 
+            socialLink, 
+            paymentSuccess: true 
+        })
+    });
+    
+    const data = await res.json();
+    if (data.success) {
+        message.success(data.message);
+        setIsPaymentModalOpen(false);
+        fetchLatestUserData();
+    } else {
+        message.error(data.message);
+    }
+    setLoading(false);
+  };
 
-  const KYCTab = () => (
-    <div style={{ textAlign: 'center', maxWidth: 400, margin: '0 auto' }}>
-      {kycStatus === 'verified' ? (
-        <Result 
-          status="success" 
-          icon={<CheckCircleFilled style={{ color: '#52c41a' }} />}
-          title="You are Verified!" 
-          subTitle="You can now host trips and access advisor features." 
-        />
-      ) : kycStatus === 'pending' ? (
-        <Alert 
-          message="Verification Pending" 
-          description="Admin is reviewing your documents." 
-          type="info" 
-          showIcon 
-        />
+  if (!user) return <div style={{padding:50}}>Loading...</div>;
+
+  const isAdvisor = user.role === 'advisor';
+  // Check strict statuses
+  const kycDone = user.kycStatus === 'verified';
+  const kycPending = user.kycStatus === 'pending';
+  
+  let currentStep = 0;
+  if (kycPending) currentStep = 0; // Stuck on step 0 until approved
+  if (kycDone) currentStep = 1;
+  if (user.isVerified) currentStep = 2;
+
+  // --- VERIFICATION TAB CONTENT ---
+  const VerificationTab = () => (
+    <div style={{ padding: 20 }}>
+      {isAdvisor ? (
+          <>
+            <Steps current={currentStep} style={{ marginBottom: 40 }}>
+                <Step title="KYC" description={kycPending ? "In Review" : "Govt ID"} />
+                <Step title="Social & Payment" description="Link + Fee" />
+                <Step title="Verified" description="Blue Badge" />
+            </Steps>
+
+            {/* STEP 1: KYC Logic */}
+            {!kycDone && (
+                <Card title="Step 1: Identity Verification (Requirement D)">
+                    {kycPending ? (
+                        // 👇 SHOW THIS IF PENDING
+                        <div style={{ textAlign: 'center', padding: 20 }}>
+                            <Alert 
+                                message="Verification Pending" 
+                                description="Your ID has been submitted and is waiting for Admin approval. You cannot proceed until approved."
+                                type="warning" 
+                                showIcon 
+                                style={{ marginBottom: 15 }}
+                            />
+                            <Button icon={<ReloadOutlined />} onClick={fetchLatestUserData}>Check Status</Button>
+                        </div>
+                    ) : (
+                        // 👇 SHOW FORM IF NEW OR REJECTED
+                        <>
+                            <Text>Upload your Government ID to proceed.</Text>
+                            <Input 
+                                prefix={<UploadOutlined />} 
+                                placeholder="Paste ID Link (e.g. Drive URL)" 
+                                value={docUrl} onChange={e => setDocUrl(e.target.value)}
+                                style={{ marginTop: 10, marginBottom: 10 }} 
+                            />
+                            <Button type="primary" onClick={handleSubmitKYC} loading={loading}>Submit ID</Button>
+                        </>
+                    )}
+                </Card>
+            )}
+
+            {/* STEP 2: SOCIAL + PAYMENT */}
+            {kycDone && !user.isVerified && (
+                <Card title="Step 2: Social Media & Subscription (Requirement B & C)">
+                    <Alert message="KYC Verified! Proceed to Step 2." type="success" showIcon style={{ marginBottom: 15 }} />
+                    
+                    <Text strong>1. Social Media Profile</Text>
+                    <Input 
+                        prefix={<InstagramOutlined />} 
+                        placeholder="https://instagram.com/yourname" 
+                        value={socialLink} onChange={e => setSocialLink(e.target.value)}
+                        style={{ marginTop: 5, marginBottom: 20 }} 
+                    />
+
+                    <Text strong>2. Monthly Subscription (Requirement C)</Text>
+                    <div style={{ marginTop: 5 }}>
+                        <Tag color="orange">₹199 / Month</Tag>
+                        <Text type="secondary">Varies person to person</Text>
+                    </div>
+                    
+                    <Button 
+                        type="primary" 
+                        block 
+                        icon={<CreditCardOutlined />} 
+                        style={{ marginTop: 20, background: '#fa541c' }}
+                        onClick={() => setIsPaymentModalOpen(true)}
+                    >
+                        Pay & Get Verified
+                    </Button>
+                </Card>
+            )}
+
+            {/* STEP 3: DONE */}
+            {user.isVerified && (
+                <Card style={{ textAlign: 'center', borderColor: '#52c41a', background: '#f6ffed' }}>
+                    <CheckCircleFilled style={{ fontSize: 50, color: '#52c41a', marginBottom: 10 }} />
+                    <Title level={3}>You are Verified!</Title>
+                    <Text>Your profile is now ranked higher in search results.</Text>
+                </Card>
+            )}
+          </>
       ) : (
-        <>
-          <SafetyCertificateFilled style={{ fontSize: 40, color: '#faad14', marginBottom: 15 }} />
-          <Title level={4}>Verify Your Identity</Title>
-          <Text type="secondary">Paste a link to your ID (Google Drive / Image URL)</Text>
-          
-          <Input 
-            prefix={<UploadOutlined />} 
-            placeholder="https://example.com/my-id.jpg" 
-            style={{ marginTop: 20 }} 
-            value={docUrl} 
-            onChange={(e) => setDocUrl(e.target.value)} 
-          />
-          
-          <Button type="primary" block style={{ marginTop: 15 }} loading={loading} onClick={handleSubmitKYC}>
-            Submit for Review
-          </Button>
-        </>
+          <Alert message="Switch to Advisor Mode to access Verification." type="warning" showIcon />
       )}
+
+      {/* PAYMENT MODAL */}
+      <Modal 
+        title="Complete Payment" 
+        open={isPaymentModalOpen} 
+        onCancel={() => setIsPaymentModalOpen(false)}
+        footer={[
+            <Button key="cancel" onClick={() => setIsPaymentModalOpen(false)}>Cancel</Button>,
+            <Button key="pay" type="primary" loading={loading} onClick={handleFinalVerification}>Confirm Payment of ₹199</Button>
+        ]}
+      >
+        <p>You are paying <b>₹199</b> for the Monthly Verified Badge.</p>
+        <p>Social Link: <b>{socialLink}</b></p>
+        <Text type="secondary">(This is a simulated payment gateway)</Text>
+      </Modal>
     </div>
   );
 
   return (
-    <div style={{ maxWidth: 800, margin: '40px auto', padding: '0 20px' }}>
+    <div style={{ maxWidth: 850, margin: '40px auto', padding: '0 20px' }}>
       <Card>
+        {/* HEADER */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20 }}>
           <Avatar size={80} src={user.avatar} icon={<UserOutlined />} />
-          <div>
+          <div style={{ flex: 1 }}>
             <Title level={3} style={{ margin: 0 }}>
               {user.name} 
-              {kycStatus === 'verified' && <SafetyCertificateFilled style={{ color: '#52c41a', marginLeft: 10, fontSize: 20 }} />}
+              {user.isVerified && <CheckCircleFilled style={{ color: '#1890ff', marginLeft: 8 }} />}
             </Title>
-            <Text type="secondary">{user.email}</Text> <br />
-            
-            <div style={{ marginTop: 5 }}>
-                <Tag color="blue">{(user.role || 'USER').toUpperCase()}</Tag>
-                {kycStatus === 'verified' ? (
-                    <Tag color="green">KYC VERIFIED</Tag>
-                ) : (
-                    <Tag color="orange">KYC: {(kycStatus || 'NEW').toUpperCase()}</Tag>
-                )}
-            </div>
+            <Tag color={isAdvisor ? "purple" : "blue"}>{user.role.toUpperCase()}</Tag>
           </div>
-          
-          <div style={{ marginLeft: 'auto', display:'flex', gap: 10 }}>
-            {/* Manual Refresh Button */}
-            <Button icon={<ReloadOutlined />} onClick={fetchLatestUserData} loading={refreshing}>
-                Refresh
-            </Button>
-            <Button danger onClick={() => { logout(); navigate('/'); }}>Logout</Button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+             <Switch 
+                checked={isAdvisor} onChange={handleRoleSwitch} 
+                checkedChildren="Advisor" unCheckedChildren="Traveler"
+             />
+             <Button icon={<ReloadOutlined />} onClick={fetchLatestUserData} loading={refreshing}>Refresh</Button>
           </div>
         </div>
 
         <Tabs defaultActiveKey="1" items={[
-          { key: '1', label: 'My KYC', children: <KYCTab /> },
-          { key: '2', label: 'My Trips', children: <div style={{padding:20, textAlign:'center'}}>Trip History Coming Soon...</div> },
+          { key: '1', label: 'Verification Center', children: <VerificationTab /> },
+          { key: '2', label: 'My Settings', children: <div>Settings Content</div> },
         ]} />
       </Card>
     </div>

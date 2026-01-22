@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { Form, Input, Button, Typography, Card, message } from 'antd';
+import { Form, Input, Button, Typography, Card, message, Checkbox } from 'antd'; // 👈 Added Checkbox
 import { UserOutlined, LockOutlined, MailOutlined, UserAddOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext'; 
@@ -7,19 +7,22 @@ import { AuthContext } from '../context/AuthContext';
 const { Title, Text } = Typography;
 
 const Register = () => {
-  const { register } = useContext(AuthContext); // 👈 FIXED: Using 'register'
+  const { register } = useContext(AuthContext);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   const onFinish = async (values) => {
     setLoading(true);
     
-    // 👇 FIXED: Calling the correct function from Context
-    const result = await register(values.name, values.email, values.password);
+    // 👇 LOGIC: Set role based on Checkbox
+    const role = values.isAdvisor ? 'advisor' : 'traveler';
+
+    // 👇 Pass 'role' as the 4th argument
+    const result = await register(values.name, values.email, values.password, role);
     
     if (result.success) {
       message.success("Registration Successful! Welcome aboard. 🚀");
-      navigate('/'); // Go to Home Page
+      navigate('/'); 
     } else {
       message.error(result.message);
     }
@@ -73,8 +76,13 @@ const Register = () => {
             <Input.Password prefix={<LockOutlined />} placeholder="Password" />
           </Form.Item>
 
+          {/* 👇 NEW: ADVISOR CHECKBOX */}
+          <Form.Item name="isAdvisor" valuePropName="checked">
+            <Checkbox>I want to sign up as a <b>Travel Advisor</b></Checkbox>
+          </Form.Item>
+
           <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading} icon={<UserAddOutlined />}>
+            <Button type="primary" htmlType="submit" block loading={loading} icon={<UserAddOutlined />} style={{ background: '#fa541c', borderColor: '#fa541c' }}>
               Register
             </Button>
           </Form.Item>
