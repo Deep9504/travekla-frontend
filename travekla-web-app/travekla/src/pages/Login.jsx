@@ -20,14 +20,14 @@ const Login = () => {
 
     if (result.success) {
       message.success("Welcome back!");
-      
+
       // 🌟 NEW LOGIC: Check Role for Redirect
       if (result.user?.role === 'admin') {
         navigate('/admin'); // Send Admins to Dashboard
       } else {
         navigate('/');      // Send everyone else to Home
       }
-      
+
     } else {
       message.error(result.message);
     }
@@ -36,33 +36,33 @@ const Login = () => {
   // --- 🔥 GOOGLE LOGIN HANDLER ---
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-        // Send the token we got from Google to OUR Backend
-        const res = await fetch('http://localhost:5000/api/auth/google', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: credentialResponse.credential })
-        });
-        const data = await res.json();
+      // Send the token we got from Google to OUR Backend
+      const res = await fetch('http://localhost:5000/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: credentialResponse.credential })
+      });
+      const data = await res.json();
 
-        if (data.success) {
-            // Manually save to storage & force refresh to update Context
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            message.success("Google Login Successful! 🎉");
-            
-            // 🌟 NEW LOGIC: Check Role for Redirect (with page refresh)
-            if (data.user?.role === 'admin') {
-                window.location.href = "/admin";
-            } else {
-                window.location.href = "/";
-            }
+      if (data.success) {
+        // Manually save to storage & force refresh to update Context
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        message.success("Google Login Successful! 🎉");
 
+        // 🌟 NEW LOGIC: Check Role for Redirect (with page refresh)
+        if (data.user?.role === 'admin') {
+          window.location.href = "/admin";
         } else {
-            message.error("Google Login Failed");
+          window.location.href = "/";
         }
+
+      } else {
+        message.error("Google Login Failed");
+      }
     } catch (error) {
-        console.error(error);
-        message.error("Server Error");
+      console.error(error);
+      message.error("Server Error");
     }
   };
 
@@ -70,7 +70,7 @@ const Login = () => {
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f0f2f5' }}>
       <Card style={{ width: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', borderRadius: 10 }}>
         <div style={{ textAlign: 'center', marginBottom: 30 }}>
-          <Title level={2} style={{ color: '#fa541c' }}>Travekla</Title>
+          <Title level={2} style={{ color: 'var(--primary)' }}>Travekla</Title>
           <Text type="secondary">Welcome back, traveler!</Text>
         </div>
 
@@ -84,7 +84,7 @@ const Login = () => {
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading} style={{ background: '#fa541c', borderColor: '#fa541c' }}>
+            <Button type="primary" htmlType="submit" block loading={loading} style={{ background: 'var(--primary)', borderColor: 'var(--primary)' }}>
               Log in
             </Button>
           </Form.Item>
@@ -94,13 +94,13 @@ const Login = () => {
         <Divider plain>OR</Divider>
 
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-            <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => message.error('Login Failed')}
-                theme="filled_blue"
-                shape="pill"
-                width="350"
-            />
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => message.error('Login Failed')}
+            theme="filled_blue"
+            shape="pill"
+            width="350"
+          />
         </div>
 
         <div style={{ textAlign: 'center' }}>

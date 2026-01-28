@@ -2,7 +2,7 @@ import React, { useContext, useState } from 'react';
 import { Form, Input, Button, Typography, Card, message, Checkbox } from 'antd'; // 👈 Added Checkbox
 import { UserOutlined, LockOutlined, MailOutlined, UserAddOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext'; 
+import { AuthContext } from '../context/AuthContext';
 
 const { Title, Text } = Typography;
 
@@ -13,16 +13,16 @@ const Register = () => {
 
   const onFinish = async (values) => {
     setLoading(true);
-    
+
     // 👇 LOGIC: Set role based on Checkbox
     const role = values.isAdvisor ? 'advisor' : 'traveler';
 
     // 👇 Pass 'role' as the 4th argument
     const result = await register(values.name, values.email, values.password, role);
-    
+
     if (result.success) {
       message.success("Registration Successful! Welcome aboard. 🚀");
-      navigate('/'); 
+      navigate('/');
     } else {
       message.error(result.message);
     }
@@ -30,14 +30,14 @@ const Register = () => {
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)' 
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)'
     }}>
-      <Card 
+      <Card
         style={{ width: 400, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
         bordered={false}
       >
@@ -82,7 +82,7 @@ const Register = () => {
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading} icon={<UserAddOutlined />} style={{ background: '#fa541c', borderColor: '#fa541c' }}>
+            <Button type="primary" htmlType="submit" block loading={loading} icon={<UserAddOutlined />} style={{ background: 'var(--primary)', borderColor: 'var(--primary)' }}>
               Register
             </Button>
           </Form.Item>
