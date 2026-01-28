@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Layout, ConfigProvider } from 'antd';
 import Navbar from './components/layout/Navbar'; 
 
@@ -13,11 +13,14 @@ import Login from "./pages/Login";
 import Register from './pages/Register';
 import Profile from './pages/Profile'; 
 import ManageTrip from './pages/ManageTrip';
+import CreateTrip from './pages/CreateTrip';
+import TripDetails from './pages/TripDetails';
+import MyTrips from './pages/MyTrips';
 
 // --- ADMIN PAGES ---
-import AdminLogin from './pages/admin/AdminLogin';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import SuperAdminDashboard from "./pages/SuperAdminDashboard"; // Keeping if you still need it
+// 👇 IMPORTANT: Ensure this path matches where you saved your file
+// It is likely either "./pages/AdminDashboard" OR "./pages/admin/AdminDashboard"
+import AdminDashboard from './pages/admin/AdminDashboard'; 
 
 // --- CONTEXT ---
 import { AuthProvider } from "./context/AuthContext"; 
@@ -50,7 +53,7 @@ const App = () => {
                   <Route path="/" element={<Home />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
-                 <Route path="/advisors" element={<Advisors />} />
+                  <Route path="/advisors" element={<Advisors />} />
                   <Route path="/gold" element={<GoldMembership />} />
 
                   {/* --- USER ROUTES --- */}
@@ -58,11 +61,14 @@ const App = () => {
                   <Route path="/group/:id" element={<GroupDetails />} />
                   <Route path="/manage-trip/:id" element={<ManageTrip />} />
                   <Route path="/profile" element={<Profile />} /> 
+                  <Route path="/create-trip" element={<CreateTrip />} />
+                  <Route path="/trip/:id" element={<TripDetails />} />
+                  <Route path="/my-trips" element={<MyTrips />} />
                   
-                  {/* --- ADMIN ROUTES (Fixed) --- */}
-                  <Route path="/admin" element={<AdminLogin />} /> {/* Login Page */}
-                  <Route path="/admin/dashboard" element={<AdminDashboard />} /> {/* Dashboard Page */}
-                  <Route path="/super-admin" element={<SuperAdminDashboard />} /> {/* Legacy/Extra */}
+                  {/* --- ADMIN ROUTES (FIXED) --- */}
+                  {/* 👇 CHANGE THIS LINE. Point /admin directly to the Dashboard */}
+                  <Route path="/admin" element={<AdminDashboard />} /> 
+                  
                 </Routes>
               </Content>
 

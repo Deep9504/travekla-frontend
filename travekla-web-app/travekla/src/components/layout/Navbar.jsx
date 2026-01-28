@@ -1,6 +1,9 @@
 import React, { useContext } from 'react';
 import { Layout, Menu, Button, Avatar, Dropdown, message } from 'antd';
-import { HomeOutlined, RocketOutlined, UserOutlined, LogoutOutlined, LoginOutlined, SearchOutlined,CrownFilled,SafetyCertificateOutlined } from '@ant-design/icons';
+import { 
+  HomeOutlined, RocketOutlined, UserOutlined, LogoutOutlined, 
+  LoginOutlined, SearchOutlined, CrownFilled, ScheduleOutlined 
+} from '@ant-design/icons';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 
@@ -36,24 +39,26 @@ const Navbar = () => {
     }
   ];
 
-  // 👇 UPDATED MENU ITEMS (Added Advisor Back)
+  // 👇 MAIN NAVIGATION (Clean & Consistent)
   const navItems = [
     { label: <Link to="/">Home</Link>, key: '/', icon: <HomeOutlined /> },
     
-    // 👇 This was missing!
     { label: <Link to="/advisors">Find Advisor</Link>, key: '/advisors', icon: <SearchOutlined /> }, 
     
     { label: <Link to="/create-group">Create Trip</Link>, key: '/create-group', icon: <RocketOutlined /> },
+    
+    // 🌟 MY TRIPS (Normal Style)
+    ...(user ? [{
+        label: <Link to="/my-trips">My Trips</Link>, 
+        key: '/my-trips', 
+        icon: <ScheduleOutlined /> 
+    }] : []),
+
     { 
-      label: <Link to="/gold" style={{ color: '#faad14', fontWeight: 'bold' }}>Gold</Link>, 
+      label: <Link to="/gold">Gold</Link>, 
       key: '/gold', 
-      icon: <CrownFilled style={{ color: '#faad14' }} /> 
+      icon: <CrownFilled /> 
     },
-    // { 
-    //   label: <Link to="/admin" style={{ color: 'red' }}>Admin</Link>, 
-    //   key: '/admin', 
-    //   icon: <SafetyCertificateOutlined style={{ color: 'red' }} /> 
-    // },
   ];
 
   return (
@@ -79,7 +84,7 @@ const Navbar = () => {
         <span style={{ color: '#fa541c' }}>Travekla</span>
       </div>
 
-      {/* 2. MENU ITEMS (Center) */}
+      {/* 2. MENU ITEMS */}
       <Menu 
         mode="horizontal" 
         selectedKeys={[location.pathname]} 
@@ -87,7 +92,7 @@ const Navbar = () => {
         style={{ flex: 1, borderBottom: 'none', justifyContent: 'center', background: 'transparent' }}
       />
 
-      {/* 3. USER ACTION (Right) */}
+      {/* 3. USER ACTION */}
       <div>
         {user ? (
           <Dropdown menu={{ items: menuItems }} placement="bottomRight" arrow>

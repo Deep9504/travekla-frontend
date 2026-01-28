@@ -1,7 +1,7 @@
 // File: server/createAdmin.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const User = require('./models/User'); // 👈 Adjusted path for inside server folder
+const User = require('../models/User'); // ✅ Correct (Goes up one folder) // 👈 Adjusted path for inside server folder
 
 // 👇 Check if your DB name is correct (travekla)
 const MONGO_URI = 'mongodb://127.0.0.1:27017/travekla';

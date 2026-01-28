@@ -1,19 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Card, Row, Col, Statistic, Table, Tag, Button, Tabs, message, Spin } from 'antd';
+import React, { useState, useEffect, useContext } from 'react';
+import { Layout, Menu, Card, Row, Col, Statistic, Table, Tag, Button, Tabs, message, Spin, Typography } from 'antd';
 import { 
-  DashboardOutlined, 
-  IdcardOutlined, 
-  GlobalOutlined, 
-  CheckCircleOutlined, 
-  CloseCircleOutlined,
-  LogoutOutlined,
-  ReloadOutlined
+  DashboardOutlined, IdcardOutlined, GlobalOutlined, 
+  CheckCircleOutlined, LogoutOutlined, ReloadOutlined 
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../../context/AuthContext'; // Check this path matches your folder structure
 
 const { Header, Content, Sider } = Layout;
 
 const AdminDashboard = () => {
+  const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   
@@ -26,41 +23,39 @@ const AdminDashboard = () => {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      // 1. Get Stats
       const statRes = await fetch('http://localhost:5000/api/admin/stats');
       const statData = await statRes.json();
       setStats(statData);
 
-      // 2. Get Pending KYCs
       const kycRes = await fetch('http://localhost:5000/api/admin/kyc-pending');
       const kycData = await kycRes.json();
       setKycRequests(kycData);
 
-      // 3. Get Pending Trips
       const tripRes = await fetch('http://localhost:5000/api/admin/trips-pending');
       const tripData = await tripRes.json();
       setTripRequests(tripData);
 
     } catch (error) {
-      console.error("Admin Fetch Error:", error);
+      console.error("Fetch Error:", error);
       message.error("Failed to load admin data");
     } finally {
       setLoading(false);
     }
   };
 
+  // Auto-load data if admin
   useEffect(() => {
-    fetchAllData();
-  }, []);
+    if (user?.role === 'admin') {
+        fetchAllData();
+    }
+  }, [user]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/admin');
+    logout();
+    navigate('/login');
   };
 
   // --- ACTIONS ---
-
   const handleKYCAction = async (userId, action) => {
     try {
       await fetch('http://localhost:5000/api/admin/kyc-action', {
@@ -69,7 +64,7 @@ const AdminDashboard = () => {
         body: JSON.stringify({ userId, action })
       });
       message.success(`User ${action === 'approve' ? 'Verified' : 'Rejected'}`);
-      fetchAllData(); // Refresh list
+      fetchAllData();
     } catch (error) {
       message.error("Action failed");
     }
@@ -81,56 +76,19 @@ const AdminDashboard = () => {
         method: 'PUT'
       });
       message.success("Trip Verified & Published! ✅");
-      fetchAllData(); // Refresh list
+      fetchAllData();
     } catch (error) {
       message.error("Action failed");
     }
   };
 
   // --- TABS ---
-
   const OverviewTab = () => (
     <Row gutter={16}>
-      <Col span={8}>
-        <Card>
-          <Statistic title="Total Revenue (Est.)" value={stats.revenue} prefix="₹" valueStyle={{ color: '#3f8600' }} />
-        </Card>
-      </Col>
-      <Col span={8}>
-        <Card>
-          <Statistic title="Pending KYCs" value={stats.pendingKYC} prefix={<IdcardOutlined />} />
-        </Card>
-      </Col>
-      <Col span={8}>
-        <Card>
-          <Statistic title="Pending Trips" value={stats.pendingTrips} prefix={<GlobalOutlined />} />
-        </Card>
-      </Col>
+      <Col span={8}><Card><Statistic title="Total Revenue" value={stats.revenue} prefix="₹" valueStyle={{ color: '#3f8600' }} /></Card></Col>
+      <Col span={8}><Card><Statistic title="Pending KYCs" value={stats.pendingKYC} prefix={<IdcardOutlined />} /></Card></Col>
+      <Col span={8}><Card><Statistic title="Pending Trips" value={stats.pendingTrips} prefix={<GlobalOutlined />} /></Card></Col>
     </Row>
-  );
-
- const KycTab = () => (
-    <Table 
-      dataSource={kycRequests}
-      rowKey="_id"
-      locale={{ emptyText: "No pending KYC requests" }}
-      columns={[
-        { title: 'Name', dataIndex: 'name' },
-        { title: 'Email', dataIndex: 'email' },
-        { title: 'Document', render: (_, r) => (
-             r.kycDocument ? 
-             <a href={r.kycDocument} target="_blank" rel="noopener noreferrer">View Doc 🔗</a> 
-             : <span style={{color:'red'}}>No Link</span>
-        )},
-        { title: 'Status', render: () => <Tag color="orange">Pending</Tag> },
-        { title: 'Action', render: (_, r) => (
-            <>
-               <Button type="primary" size="small" icon={<CheckCircleOutlined />} onClick={() => handleKYCAction(r._id, 'approve')} style={{ marginRight: 5 }}>Approve</Button>
-               <Button danger size="small" icon={<CloseCircleOutlined />} onClick={() => handleKYCAction(r._id, 'reject')}>Reject</Button>
-            </>
-        )}
-      ]}
-    />
   );
 
   const TripsTab = () => (
@@ -149,10 +107,37 @@ const AdminDashboard = () => {
     />
   );
 
+  const KycTab = () => (
+    <Table 
+      dataSource={kycRequests}
+      rowKey="_id"
+      locale={{ emptyText: "No pending KYC requests" }}
+      columns={[
+        { title: 'Name', dataIndex: 'name' },
+        { title: 'Email', dataIndex: 'email' },
+        { title: 'Status', render: () => <Tag color="orange">Pending</Tag> },
+        { title: 'Action', render: (_, r) => (
+            <Button type="primary" size="small" icon={<CheckCircleOutlined />} onClick={() => handleKYCAction(r._id, 'approve')}>Approve</Button>
+        )}
+      ]}
+    />
+  );
+
+  // 🛡️ SECURITY CHECK
+  if (!user || user.role !== 'admin') {
+    return (
+        <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+            <h2>🚫 Access Denied</h2>
+            <p>You must be an Admin to view this page.</p>
+            <Button type="primary" onClick={() => navigate('/login')}>Go to Login</Button>
+        </div>
+    );
+  }
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider collapsible>
-        <div style={{ height: 32, margin: 16, color:'white', fontWeight:'bold', textAlign:'center', lineHeight:'32px' }}>ADMIN PANEL</div>
+        <div style={{ height: 32, margin: 16, color:'white', textAlign:'center', fontWeight:'bold', lineHeight:'32px' }}>ADMIN</div>
         <Menu theme="dark" defaultSelectedKeys={['1']} mode="inline" items={[
             { key: '1', icon: <DashboardOutlined />, label: 'Dashboard' },
             { key: '2', icon: <LogoutOutlined />, label: 'Logout', onClick: handleLogout }

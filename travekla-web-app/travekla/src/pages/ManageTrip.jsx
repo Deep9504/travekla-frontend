@@ -1,116 +1,242 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, List, Button, Typography, Avatar, Tabs, Tag, message, Spin, Empty } from 'antd';
-import { CheckOutlined, CloseOutlined, UserOutlined, ArrowLeftOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import { GroupContext } from '../context/GroupContext';
+import { 
+  Layout, Card, Typography, Form, Input, DatePicker, InputNumber, 
+  Button, Row, Col, Tabs, List, Avatar, Tag, message, Spin, Divider, Space 
+} from 'antd';
+import { 
+  ArrowLeftOutlined, SaveOutlined, UserOutlined, 
+  TeamOutlined, EditOutlined, DeleteOutlined, 
+  PlusOutlined, MinusCircleOutlined, CheckCircleOutlined, CloseCircleOutlined 
+} from '@ant-design/icons';
+import moment from 'moment';
 import { AuthContext } from '../context/AuthContext';
 
 const { Title, Text } = Typography;
-
-// --- HELPER: Normalize IDs (The same fix we used before) ---
-const normalizeId = (val) => {
-  if (!val) return "";
-  if (typeof val === 'string') return val;
-  if (val._id) return normalizeId(val._id);
-  if (val.id) return normalizeId(val.id);
-  return String(val);
-};
+const { TabPane } = Tabs;
 
 const ManageTrip = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { groups, approveMember, removeMember } = useContext(GroupContext);
   const { user } = useContext(AuthContext);
-  
+
   const [trip, setTrip] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [form] = Form.useForm();
 
-  // 1. Find the Trip (using robust ID check)
-  useEffect(() => {
-    if (groups.length > 0) {
-      const foundTrip = groups.find(g => normalizeId(g) === normalizeId(id));
-      setTrip(foundTrip);
+  // --- 1. FETCH DATA ---
+  const fetchTripData = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/trips');
+      const data = await res.json();
+      const foundTrip = data.find(t => t._id === id);
+
+      if (foundTrip) {
+        setTrip(foundTrip);
+        // Pre-fill form
+        form.setFieldsValue({
+          ...foundTrip,
+          date: foundTrip.date ? moment(foundTrip.date) : null,
+          itinerary: foundTrip.itinerary || [{ day: 1, activity: "" }] 
+        });
+      } else {
+        message.error("Trip not found!");
+        navigate('/');
+      }
+    } catch (error) {
+      console.error("Error loading trip:", error);
+    } finally {
+      setLoading(false);
     }
-  }, [groups, id]);
+  };
 
-  if (!trip) return <div style={{ padding: 100, textAlign: 'center' }}><Spin size="large" /></div>;
+  useEffect(() => {
+    if (user) fetchTripData();
+  }, [id, user, navigate, form]);
 
-  // 2. SECURITY CHECK: Are you the Creator?
-  const currentUserId = normalizeId(user);
-  const creatorId = normalizeId(trip.creator);
+  // --- 2. HANDLE SAVE (Update Trip Details) ---
+  const handleUpdate = async (values) => {
+    try {
+        message.loading({ content: "Saving changes...", key: "save" });
+        const updateData = {
+            ...values,
+            date: values.date ? values.date.toISOString() : null,
+        };
 
-  if (currentUserId !== creatorId) {
-    return (
-      <div style={{ padding: 50, textAlign: 'center', marginTop: 50 }}>
-        <SafetyCertificateOutlined style={{ fontSize: 60, color: 'red' }} />
-        <Title level={3}>Access Denied</Title>
-        <Text type="secondary">
-          You are logged in as ID: {currentUserId.slice(0,5)}...<br/>
-          This trip belongs to ID: {creatorId.slice(0,5)}...
-        </Text>
-        <br />
-        <Button type="primary" onClick={() => navigate('/')} style={{ marginTop: 20 }}>Go Home</Button>
-      </div>
-    );
-  }
+        const res = await fetch(`http://localhost:5000/api/trips/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
+        });
 
-  // --- MEMBER LIST COMPONENT ---
-  const MemberList = ({ list, isPending }) => (
-    <List
-      itemLayout="horizontal"
-      dataSource={list} 
-      locale={{ emptyText: <Empty description={isPending ? "No new requests" : "No members yet"} /> }}
-      renderItem={(member) => {
-        // Handle member being an ID string OR an Object
-        const memberName = member.name || "Unknown User";
-        const memberId = normalizeId(member);
-        const memberAvatar = member.avatar || member.avatarUrl;
+        if (res.ok) {
+            message.success({ content: "Trip Updated! ✅", key: "save" });
+            fetchTripData(); // Refresh data
+        } else {
+            message.error({ content: "Update failed", key: "save" });
+        }
+    } catch (error) {
+        message.error("Update Failed");
+    }
+  };
 
-        return (
-          <List.Item
-            actions={isPending ? [
-              <Button type="primary" shape="circle" icon={<CheckOutlined />} onClick={() => approveMember(trip._id, memberId)} />,
-              <Button danger shape="circle" icon={<CloseOutlined />} onClick={() => removeMember(trip._id, memberId)} />
-            ] : [
-              <Button danger type="text" onClick={() => removeMember(trip._id, memberId)}>Remove</Button>
-            ]}
-          >
-            <List.Item.Meta
-              avatar={<Avatar icon={<UserOutlined />} src={memberAvatar} />}
-              title={<Text strong>{memberName}</Text>}
-              description={isPending ? "Wants to join your trip" : "Confirmed Traveler"}
-            />
-          </List.Item>
-        );
-      }}
-    />
-  );
+  // --- 3. HANDLE REQUESTS (Accept/Reject) ---
+  const handleRequestAction = async (userId, action) => {
+      try {
+          message.loading({ content: "Processing...", key: "req" });
+          const endpoint = action === 'accept' ? 'accept' : 'reject';
+          
+          const res = await fetch(`http://localhost:5000/api/trips/${id}/request/${endpoint}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId })
+          });
+
+          if (res.ok) {
+              message.success({ content: `User ${action}ed!`, key: "req" });
+              fetchTripData(); // 🌟 REFRESH DATA INSTANTLY
+          } else {
+              message.error("Action failed");
+          }
+      } catch (error) {
+          console.error(error);
+          message.error("Server Error");
+      }
+  };
+
+  if (loading) return <div style={{textAlign:'center', marginTop: 100}}><Spin size="large" /></div>;
 
   return (
-    <div style={{ maxWidth: 800, margin: '40px auto', padding: '0 20px' }}>
-      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} style={{ marginBottom: 20 }}>Back</Button>
+    <div style={{ background: '#f0f2f5', minHeight: '100vh', padding: '40px 20px' }}>
       
-      <Card 
-        title={
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Manage: {trip.to}</span>
-            <Tag color="blue">{trip.pendingMembers?.length || 0} New Requests</Tag>
-            </div>
-        }
-        style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-      >
-        <Tabs defaultActiveKey="1" items={[
-          {
-            key: '1',
-            label: `Pending Requests (${trip.pendingMembers?.length || 0})`,
-            children: <MemberList list={trip.pendingMembers || []} isPending={true} />
-          },
-          {
-            key: '2',
-            label: `Approved Members (${trip.members?.length || 0})`,
-            children: <MemberList list={trip.members || []} isPending={false} />
-          }
-        ]} />
-      </Card>
+      {/* HEADER */}
+      <div style={{ maxWidth: 1000, margin: '0 auto 20px', display:'flex', justifyContent:'space-between' }}>
+         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/')} type="text">Back</Button>
+         <Tag color="purple">MANAGE MODE</Tag>
+      </div>
+
+      <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+        <Row gutter={[24, 24]}>
+            
+            {/* LEFT: INFO CARD */}
+            <Col xs={24} md={8}>
+                <Card style={{ borderRadius: 12, textAlign: 'center', marginBottom: 20 }}>
+                    <Avatar size={80} src={user?.avatar} icon={<UserOutlined />} style={{marginBottom: 15}} />
+                    <Title level={4}>{trip?.to}</Title>
+                    <Text type="secondary">Organizer: You</Text>
+                    <Divider />
+                    <div style={{textAlign:'left'}}>
+                        <p><strong>📅 Date:</strong> {new Date(trip?.date).toLocaleDateString()}</p>
+                        <p><strong>💰 Budget:</strong> ₹{trip?.budget}</p>
+                        <p><strong>👥 Capacity:</strong> {trip?.capacity || 10}</p>
+                    </div>
+                </Card>
+            </Col>
+
+            {/* RIGHT: TABS */}
+            <Col xs={24} md={16}>
+                <Card style={{ borderRadius: 12 }}>
+                    <Tabs defaultActiveKey="1">
+                        
+                        {/* TAB 1: EDIT DETAILS & ITINERARY */}
+                        <TabPane tab={<span><EditOutlined /> Details</span>} key="1">
+                            <Form form={form} layout="vertical" onFinish={handleUpdate}>
+                                <Row gutter={16}>
+                                    <Col span={12}><Form.Item name="from" label="From"><Input /></Form.Item></Col>
+                                    <Col span={12}><Form.Item name="to" label="To"><Input /></Form.Item></Col>
+                                </Row>
+                                <Row gutter={16}>
+                                    <Col span={12}><Form.Item name="date" label="Date"><DatePicker style={{width:'100%'}}/></Form.Item></Col>
+                                    <Col span={12}><Form.Item name="budget" label="Budget (₹)"><InputNumber style={{width:'100%'}}/></Form.Item></Col>
+                                </Row>
+                                <Form.Item name="description" label="Description"><Input.TextArea rows={3}/></Form.Item>
+
+                                <Divider orientation="left">Itinerary (Day by Day)</Divider>
+                                <Form.List name="itinerary">
+                                    {(fields, { add, remove }) => (
+                                    <>
+                                        {fields.map(({ key, name, ...restField }, index) => (
+                                        <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                                            <Form.Item {...restField} name={[name, 'day']} label={index === 0 ? "Day" : ""} initialValue={index + 1}>
+                                                <InputNumber min={1} style={{width: 60}} />
+                                            </Form.Item>
+                                            <Form.Item {...restField} name={[name, 'activity']} label={index === 0 ? "Activity" : ""} rules={[{ required: true, message: 'Missing activity' }]}>
+                                                <Input placeholder="e.g. Visit Hidimba Temple" style={{ width: 300 }} />
+                                            </Form.Item>
+                                            <MinusCircleOutlined onClick={() => remove(name)} style={{color: 'red'}} />
+                                        </Space>
+                                        ))}
+                                        <Form.Item>
+                                            <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                                                Add Day
+                                            </Button>
+                                        </Form.Item>
+                                    </>
+                                    )}
+                                </Form.List>
+
+                                <Button type="primary" htmlType="submit" icon={<SaveOutlined />} block size="large" style={{marginTop: 20}}>
+                                    Save Changes
+                                </Button>
+                            </Form>
+                        </TabPane>
+
+                        {/* TAB 2: JOIN REQUESTS (REAL DATA NOW! 🚀) */}
+                        <TabPane tab={<span><TeamOutlined /> Requests <Tag color="red">{trip?.joinRequests?.length || 0}</Tag></span>} key="2">
+                            <List
+                                dataSource={trip?.joinRequests || []}
+                                locale={{ emptyText: "No pending requests." }}
+                                renderItem={reqUser => (
+                                    <List.Item actions={[
+                                        <Button 
+                                            type="text" 
+                                            icon={<CheckCircleOutlined />} 
+                                            style={{color:'green'}}
+                                            onClick={() => handleRequestAction(reqUser._id, 'accept')}
+                                        >
+                                            Accept
+                                        </Button>,
+                                        <Button 
+                                            type="text" 
+                                            danger 
+                                            icon={<CloseCircleOutlined />}
+                                            onClick={() => handleRequestAction(reqUser._id, 'reject')}
+                                        >
+                                            Reject
+                                        </Button>
+                                    ]}>
+                                        <List.Item.Meta
+                                            avatar={<Avatar src={reqUser.avatar} icon={<UserOutlined />} style={{backgroundColor: '#87d068'}} />}
+                                            title={reqUser.name || "Unknown User"}
+                                            description={reqUser.email || "No email"}
+                                        />
+                                    </List.Item>
+                                )}
+                            />
+                        </TabPane>
+
+                         {/* TAB 3: MEMBERS */}
+                         <TabPane tab={<span><UserOutlined /> Members ({trip?.members?.length || 0})</span>} key="3">
+                            <List
+                                dataSource={trip?.members || []}
+                                locale={{emptyText: "No accepted members yet"}}
+                                renderItem={member => (
+                                    <List.Item>
+                                        <List.Item.Meta
+                                            avatar={<Avatar src={member.avatar} icon={<UserOutlined />} />}
+                                            title={member.name}
+                                            description="Confirmed Traveler"
+                                        />
+                                    </List.Item>
+                                )}
+                            />
+                        </TabPane>
+
+                    </Tabs>
+                </Card>
+            </Col>
+        </Row>
+      </div>
     </div>
   );
 };
