@@ -20,7 +20,14 @@ const Login = () => {
 
     if (result.success) {
       message.success("Welcome back!");
-      navigate('/'); 
+      
+      // 🌟 NEW LOGIC: Check Role for Redirect
+      if (result.user?.role === 'admin') {
+        navigate('/admin'); // Send Admins to Dashboard
+      } else {
+        navigate('/');      // Send everyone else to Home
+      }
+      
     } else {
       message.error(result.message);
     }
@@ -42,7 +49,14 @@ const Login = () => {
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
             message.success("Google Login Successful! 🎉");
-            window.location.href = "/"; // Force refresh to load user into context
+            
+            // 🌟 NEW LOGIC: Check Role for Redirect (with page refresh)
+            if (data.user?.role === 'admin') {
+                window.location.href = "/admin";
+            } else {
+                window.location.href = "/";
+            }
+
         } else {
             message.error("Google Login Failed");
         }

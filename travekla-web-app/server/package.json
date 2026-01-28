@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
-  },
+ "scripts": {
+  "start": "node index.js",
+  "dev": "nodemon index.js",
+  "fix:admin": "node scripts/makeAdmin.js",
+  "reset:admin": "node scripts/resetAdmin.js"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
