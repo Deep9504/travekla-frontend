@@ -10,7 +10,7 @@ const app = express();
 
 // --- MIDDLEWARE ---
 app.use(cors({
-  origin: "http://localhost:5173", // Must match your Frontend URL
+  origin: '*',
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
