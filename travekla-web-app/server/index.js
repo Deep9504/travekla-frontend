@@ -5,6 +5,7 @@ const bookingRoutes = require('./routes/bookings');
 require('dotenv').config();
 const adminRoutes = require('./routes/admin');
 const tripRoutes = require('./routes/trips');
+const adminRoute = require('./routes/admin');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/api/ai', require('./routes/ai'));             // Ensure this file exis
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/trips', tripRoutes);
+app.use('/api/admin', adminRoute);
 
 // 👇👇 ADD THIS NEW LINE FOR ADMIN 👇👇
 app.use('/api/admin', require('./routes/admin'));
