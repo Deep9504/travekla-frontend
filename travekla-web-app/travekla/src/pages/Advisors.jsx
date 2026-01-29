@@ -24,7 +24,7 @@ const Advisors = () => {
   useEffect(() => {
     const fetchAdvisors = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/auth/advisors');
+        const res = await fetch('https://travekla-web-app.onrender.com/api/auth/advisors');
         const data = await res.json();
         setAdvisors(data);
       } catch (err) {
@@ -46,7 +46,7 @@ const Advisors = () => {
   const handleBookingSubmit = () => {
     form.validateFields().then(async (values) => {
       try {
-        const response = await fetch('http://localhost:5000/api/bookings', {
+        const response = await fetch('https://travekla-web-app.onrender.com/api/bookings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

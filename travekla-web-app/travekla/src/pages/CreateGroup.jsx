@@ -29,7 +29,7 @@ const CreateGroup = () => {
     setAiLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/ai/generate-trip', {
+      const response = await fetch('https://travekla-web-app.onrender.com/api/ai/generate-trip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })

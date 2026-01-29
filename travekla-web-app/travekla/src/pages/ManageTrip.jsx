@@ -27,7 +27,7 @@ const ManageTrip = () => {
   // --- 1. FETCH DATA ---
   const fetchTripData = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/trips');
+      const res = await fetch('https://travekla-web-app.onrender.com/api/trips');
       const data = await res.json();
       const foundTrip = data.find(t => t._id === id);
 
@@ -63,7 +63,7 @@ const ManageTrip = () => {
             date: values.date ? values.date.toISOString() : null,
         };
 
-        const res = await fetch(`http://localhost:5000/api/trips/${id}`, {
+        const res = await fetch(`https://travekla-web-app.onrender.com/api/trips/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updateData)
@@ -86,7 +86,7 @@ const ManageTrip = () => {
           message.loading({ content: "Processing...", key: "req" });
           const endpoint = action === 'accept' ? 'accept' : 'reject';
           
-          const res = await fetch(`http://localhost:5000/api/trips/${id}/request/${endpoint}`, {
+          const res = await fetch(`https://travekla-web-app.onrender.com/api/trips/${id}/request/${endpoint}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ userId })

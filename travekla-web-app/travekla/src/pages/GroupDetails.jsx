@@ -42,7 +42,7 @@ const GroupDetails = () => {
   // --- FETCH GROUP DETAILS ---
   const fetchGroupDetails = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${id}`);
+      const res = await fetch(`https://travekla-web-app.onrender.com/api/groups/${id}`);
       const data = await res.json();
       setGroup(data);
     } catch (err) {

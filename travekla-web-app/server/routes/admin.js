@@ -4,7 +4,7 @@ const User = require('../models/User');
 const Trip = require('../models/Trip');
 
 // 1. GET DASHBOARD STATS (Revenue, Counts)
-// Frontend calls: fetch('http://localhost:5000/api/admin/stats')
+// Frontend calls: fetch('https://travekla-web-app.onrender.com/api/admin/stats')
 router.get('/stats', async (req, res) => {
   try {
     // Count pending KYCs
@@ -25,7 +25,7 @@ router.get('/stats', async (req, res) => {
 });
 
 // 2. GET PENDING KYC REQUESTS
-// Frontend calls: fetch('http://localhost:5000/api/admin/kyc-pending')
+// Frontend calls: fetch('https://travekla-web-app.onrender.com/api/admin/kyc-pending')
 router.get('/kyc-pending', async (req, res) => {
   try {
     // Find users waiting for approval
@@ -37,7 +37,7 @@ router.get('/kyc-pending', async (req, res) => {
 });
 
 // 3. GET PENDING TRIPS
-// Frontend calls: fetch('http://localhost:5000/api/admin/trips-pending')
+// Frontend calls: fetch('https://travekla-web-app.onrender.com/api/admin/trips-pending')
 router.get('/trips-pending', async (req, res) => {
   try {
     // Find trips that are NOT verified yet
@@ -51,7 +51,7 @@ router.get('/trips-pending', async (req, res) => {
 });
 
 // 4. HANDLE KYC ACTION (Approve/Reject)
-// Frontend calls: fetch('http://localhost:5000/api/admin/kyc-action', method: 'PUT')
+// Frontend calls: fetch('https://travekla-web-app.onrender.com/api/admin/kyc-action', method: 'PUT')
 router.put('/kyc-action', async (req, res) => {
   const { userId, action } = req.body; // action will be 'approve' or 'reject'
   try {
@@ -69,7 +69,7 @@ router.put('/kyc-action', async (req, res) => {
 });
 
 // 5. VERIFY TRIP (Publish it)
-// Frontend calls: fetch(`http://localhost:5000/api/admin/trip-verify/${tripId}`, method: 'PUT')
+// Frontend calls: fetch(`https://travekla-web-app.onrender.com/api/admin/trip-verify/${tripId}`, method: 'PUT')
 router.put('/trip-verify/:id', async (req, res) => {
   try {
     // Set isVerified to true

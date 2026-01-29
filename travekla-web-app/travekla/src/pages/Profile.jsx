@@ -28,7 +28,7 @@ const Profile = () => {
     setRefreshing(true);
     try {
       const userId = user.id || user._id;
-      const res = await fetch(`http://localhost:5000/api/auth/user/${userId}`);
+      const res = await fetch(`https://travekla-web-app.onrender.com/api/auth/user/${userId}`);
       const freshUser = await res.json();
       if (freshUser && updateUser) updateUser(freshUser);
     } catch (err) { console.log("Refresh error"); }

@@ -11,7 +11,7 @@ export const GroupProvider = ({ children }) => {
   useEffect(() => {
     const fetchGroups = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/groups');
+        const response = await fetch('https://travekla-web-app.onrender.com/api/groups');
         const data = await response.json();
 
         if (response.ok) {
@@ -32,7 +32,7 @@ export const GroupProvider = ({ children }) => {
   // 2. ADD NEW GROUP
   const addGroup = async (newGroupData) => {
     try {
-      const response = await fetch('http://localhost:5000/api/groups', {
+      const response = await fetch('https://travekla-web-app.onrender.com/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newGroupData)
@@ -66,7 +66,7 @@ export const GroupProvider = ({ children }) => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/groups/${groupId}/join`, {
+      const response = await fetch(`https://travekla-web-app.onrender.com/api/groups/${groupId}/join`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -97,7 +97,7 @@ export const GroupProvider = ({ children }) => {
   // 4. GET MY CREATED TRIPS
   const getUserTrips = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/groups/user/${userId}`);
+      const response = await fetch(`https://travekla-web-app.onrender.com/api/groups/user/${userId}`);
       return await response.json();
     } catch (error) {
       console.error(error);

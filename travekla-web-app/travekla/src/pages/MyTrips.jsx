@@ -35,12 +35,12 @@ const MyTrips = () => {
   const fetchAllMyTrips = async () => {
     try {
       // 1. Fetch Trips I Created (Hosting)
-      const resHost = await fetch(`http://localhost:5000/api/trips/my-trips/${user._id}`);
+      const resHost = await fetch(`https://travekla-web-app.onrender.com/api/trips/my-trips/${user._id}`);
       const dataHost = await resHost.json();
       setHosting(Array.isArray(dataHost) ? dataHost : []);
 
       // 2. Fetch Trips I Joined/Requested (Traveling)
-      const resBooked = await fetch(`http://localhost:5000/api/trips/booked-trips/${user._id}`);
+      const resBooked = await fetch(`https://travekla-web-app.onrender.com/api/trips/booked-trips/${user._id}`);
       const dataBooked = await resBooked.json();
 
       if(Array.isArray(dataBooked)) {

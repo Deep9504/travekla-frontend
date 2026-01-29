@@ -23,15 +23,15 @@ const AdminDashboard = () => {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const statRes = await fetch('http://localhost:5000/api/admin/stats');
+      const statRes = await fetch('https://travekla-web-app.onrender.com/api/admin/stats');
       const statData = await statRes.json();
       setStats(statData);
 
-      const kycRes = await fetch('http://localhost:5000/api/admin/kyc-pending');
+      const kycRes = await fetch('https://travekla-web-app.onrender.com/api/admin/kyc-pending');
       const kycData = await kycRes.json();
       setKycRequests(kycData);
 
-      const tripRes = await fetch('http://localhost:5000/api/admin/trips-pending');
+      const tripRes = await fetch('https://travekla-web-app.onrender.com/api/admin/trips-pending');
       const tripData = await tripRes.json();
       setTripRequests(tripData);
 

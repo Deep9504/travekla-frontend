@@ -34,7 +34,7 @@ const Home = () => {
   const fetchTrips = async (search = "") => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/trips?search=${search}`);
+      const res = await fetch(`https://travekla-web-app.onrender.com/api/trips?search=${search}`);
       const data = await res.json();
       setTrips(data);
     } catch (error) {
@@ -65,7 +65,7 @@ const Home = () => {
     if (!window.confirm("Are you sure you want to delete this trip?")) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/trips/${tripId}`, {
+      const res = await fetch(`https://travekla-web-app.onrender.com/api/trips/${tripId}`, {
         method: 'DELETE',
       });
 

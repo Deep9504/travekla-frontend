@@ -24,7 +24,7 @@ const TripDetails = () => {
   // --- FETCH TRIP DETAILS ---
   const fetchTrip = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/trips`); 
+      const res = await fetch(`https://travekla-web-app.onrender.com/api/trips`); 
       const data = await res.json();
       const foundTrip = data.find(t => t._id === id);
       
@@ -54,7 +54,7 @@ const TripDetails = () => {
       setJoinLoading(true);
 
       try {
-          const res = await fetch(`http://localhost:5000/api/trips/${id}/join`, {
+          const res = await fetch(`https://travekla-web-app.onrender.com/api/trips/${id}/join`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ userId: user._id })

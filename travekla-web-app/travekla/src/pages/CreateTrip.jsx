@@ -17,7 +17,7 @@ const CreateTrip = () => {
     
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/trips/create', {
+      const response = await fetch('https://travekla-web-app.onrender.com/api/trips/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
