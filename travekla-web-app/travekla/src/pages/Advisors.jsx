@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Row, Col, Card, Typography, Button, Avatar, Tag, Rate, Badge, Skeleton, message, Modal, Form, Input } from 'antd';
+import { Row, Col, Card, Typography, Button, Avatar, Tag, Rate, Badge, Skeleton, message } from 'antd';
 import {
-  UserOutlined, LockOutlined, MessageOutlined, CheckCircleFilled // 👈 Added CheckCircleFilled
+  UserOutlined, LockOutlined, MessageOutlined, CheckCircleFilled 
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
+// 👇 Make sure this path is correct!
+import BookingModal from '../components/advisor/BookingModal'; 
+
 const { Title, Text, Paragraph } = Typography;
-const { TextArea } = Input;
 
 const Advisors = () => {
   const { user } = useContext(AuthContext);
@@ -18,17 +20,17 @@ const Advisors = () => {
   // --- BOOKING STATE ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAdvisor, setSelectedAdvisor] = useState(null);
-  const [form] = Form.useForm();
 
   // --- FETCH ADVISORS ---
   useEffect(() => {
     const fetchAdvisors = async () => {
       try {
-        const res = await fetch('https://travekla-web-app.onrender.com/api/auth/advisors');
+        const res = await fetch('https://travekla-web-app.onrender.com/api/users/advisors'); // 👈 Check if this is the right endpoint
         const data = await res.json();
-        setAdvisors(data);
+        // If data is array, set it. If wrapped in object, extract it.
+        setAdvisors(Array.isArray(data) ? data : []); 
       } catch (err) {
-        console.error("Failed to load advisors");
+        console.error("Failed to load advisors", err);
       } finally {
         setLoading(false);
       }
@@ -38,49 +40,21 @@ const Advisors = () => {
 
   // --- HANDLE HIRE CLICK ---
   const handleHireClick = (advisor) => {
+    if (!user) {
+        message.warning("Please login to hire an advisor!");
+        navigate("/login");
+        return;
+    }
     setSelectedAdvisor(advisor);
     setIsModalOpen(true);
   };
 
-  // --- HANDLE FORM SUBMIT ---
-  const handleBookingSubmit = () => {
-    form.validateFields().then(async (values) => {
-      try {
-        const response = await fetch('https://travekla-web-app.onrender.com/api/bookings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            travelerId: user._id || user.id,
-            advisorId: selectedAdvisor._id,
-            message: values.message,
-            date: values.date
-          })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          message.success(`Request sent to ${selectedAdvisor.name}!`);
-          setIsModalOpen(false);
-          form.resetFields();
-        } else {
-          message.error("Failed to send request.");
-        }
-      } catch (error) {
-        message.error("Server Error: Check if backend is running");
-      }
-    }).catch(info => {
-      console.log('Validate Failed:', info);
-    });
-  };
-
-
   // --- RENDER ADVISOR CARD ---
   const renderAdvisorCard = (advisor) => {
-    const isGuest = !user; // Check if user is logged in
+    const isGuest = !user; 
 
     return (
-      <Col xs={24} sm={12} md={8} lg={6} key={advisor._id}>
+      <Col xs={24} sm={12} md={8} lg={6} key={advisor._id || Math.random()}>
         <Badge.Ribbon text="Verified Pro" color="gold">
           <Card
             hoverable
@@ -131,7 +105,6 @@ const Advisors = () => {
                 style={{ border: '4px solid #fff', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}
               />
 
-              {/* 👇 NAME + VERIFIED TICK */}
               <Title level={4} style={{ marginTop: 15, marginBottom: 5, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
                 {advisor.name}
                 {advisor.isVerified && (
@@ -185,40 +158,28 @@ const Advisors = () => {
       ) : (
         <Row gutter={[24, 24]}>
           {advisors.length > 0 ? advisors.map(renderAdvisorCard) : (
-            // --- DUMMY ADVISORS IF DATABASE IS EMPTY ---
+            // Dummy data if empty
             [1, 2, 3, 4].map(i => renderAdvisorCard({
               _id: i,
               name: `Advisor ${i}`,
               rating: 4.8,
               reviews: 24,
-              bio: "Expert in mountain treks and hidden gems in North India.",
-              expertise: ["Trekking", "Photography", "Budget"],
+              bio: "Expert in mountain treks and hidden gems.",
+              expertise: ["Trekking", "Budget"],
               hourlyRate: 599,
-              isVerified: i === 1 // Dummy verify check for first item
+              isVerified: true 
             }))
           )}
         </Row>
       )}
 
-      {/* 👇 BOOKING MODAL */}
-      <Modal
-        title={`Contact ${selectedAdvisor?.name}`}
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setIsModalOpen(false)}>Cancel</Button>,
-          <Button key="submit" type="primary" onClick={handleBookingSubmit} style={{ background: 'var(--secondary)', borderColor: 'var(--secondary)' }}>Send Request</Button>
-        ]}
-      >
-        <Form layout="vertical" form={form}>
-          <Form.Item name="message" label="What do you need help with?" rules={[{ required: true, message: 'Please enter a message' }]}>
-            <TextArea rows={4} placeholder="e.g. I need help planning a 5-day trip to Bali..." />
-          </Form.Item>
-          <Form.Item name="date" label="Preferred Date/Time" rules={[{ required: true, message: 'Please pick a date' }]}>
-            <Input type="date" style={{ width: '100%' }} />
-          </Form.Item>
-        </Form>
-      </Modal>
+      {/* 👇 NEW BOOKING MODAL (Replaces the old manual one) */}
+      <BookingModal 
+        visible={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        advisor={selectedAdvisor || {}} 
+      />
+      
     </div>
   );
 };
