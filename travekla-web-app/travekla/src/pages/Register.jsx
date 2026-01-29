@@ -35,10 +35,11 @@ const Register = () => {
       justifyContent: 'center',
       alignItems: 'center',
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)'
+      background: 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)',
+      padding: '20px'
     }}>
       <Card
-        style={{ width: 400, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
+        style={{ width: '100%', maxWidth: 400, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
         bordered={false}
       >
         <div style={{ textAlign: 'center', marginBottom: 30 }}>
