@@ -233,18 +233,18 @@ router.put('/admin/verify-kyc', async (req, res) => {
     }
 });
 // 👇 SECRET ROUTE: Run this once to make yourself an Admin 👇
-router.get('/make-admin/:email', async (req, res) => {
-  try {
-    const user = await User.findOneAndUpdate(
-      { email: req.params.email },
-      { role: 'admin' },
-      { new: true }
-    );
-    if (!user) return res.json({ message: "User not found!" });
-    res.json({ success: true, message: `${user.name} is now an ADMIN! 👮‍♂️`, user });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// router.get('/make-admin/:email', async (req, res) => {
+//   try {
+//     const user = await User.findOneAndUpdate(
+//       { email: req.params.email },
+//       { role: 'admin' },
+//       { new: true }
+//     );
+//     if (!user) return res.json({ message: "User not found!" });
+//     res.json({ success: true, message: `${user.name} is now an ADMIN! 👮‍♂️`, user });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// });
 
 module.exports = router;
