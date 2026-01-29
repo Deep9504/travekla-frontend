@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { Modal, Form, DatePicker, Input, Select, Button, message } from 'antd';
-import { AuthContext } from '../context/AuthContext';
+import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
 
 const { Option } = Select;
