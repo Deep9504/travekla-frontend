@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';      // 👈 Import AuthCo
 import { GroupProvider } from './context/GroupContext';
 import App from './App';
 import './index.css';
+import { HashRouter } from 'react-router-dom';
 
 // I took the Client ID from your comment
 const clientId = "23833065398-4q440fffi4g2mhk9rdapgau2ociubfbu.apps.googleusercontent.com";
@@ -27,7 +28,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           }}
         >
           <GroupProvider>
+            <HashRouter>
             <App />
+            </HashRouter>
           </GroupProvider>
         </ConfigProvider>
 

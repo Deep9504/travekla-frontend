@@ -1,18 +1,18 @@
 const express = require('express');
 const router = express.Router();
-// const Group = require('../models/Group');
+// 👇 We use the Trip model, but call it 'Group' for consistency
 const Group = require('../models/Trip');
 
-// --- 1. GET ALL GROUPS (With Search!) ---
+// --- 1. GET ALL TRIPS (With Search) ---
 router.get('/', async (req, res) => {
   try {
-    const { search } = req.query; 
+    const { search } = req.query;
     let query = {};
 
     if (search) {
       query = {
         $or: [
-          { to: { $regex: search, $options: 'i' } }, 
+          { to: { $regex: search, $options: 'i' } },
           { from: { $regex: search, $options: 'i' } },
           { description: { $regex: search, $options: 'i' } }
         ]
@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
 
     const groups = await Group.find(query)
         .sort({ createdAt: -1 })
-        .populate('creator.id', 'name avatar');
+        .populate('creator', 'name avatar'); // ✅ FIXED: Removed '.id'
         
     res.json(groups);
   } catch (err) {
@@ -29,44 +29,59 @@ router.get('/', async (req, res) => {
   }
 });
 
-// --- 2. GET SINGLE GROUP (Populated) ---
+// --- 2. GET SINGLE TRIP (Populated) ---
 router.get('/:id', async (req, res) => {
   try {
     const group = await Group.findById(req.params.id)
-      .populate('creator.id', 'name avatar')
-      .populate('members', 'name avatar email') 
-      .populate('gallery.uploadedBy', 'name avatar') 
-      .populate('reviews.user', 'name avatar') 
-      .populate('chat.user', 'name avatar'); 
+      .populate('creator', 'name avatar') // ✅ FIXED: Removed '.id'
+      .populate('members', 'name avatar email')
+      .populate('pendingMembers', 'name avatar email')
+      .populate('gallery.uploadedBy', 'name avatar');
 
-    if (!group) return res.status(404).json({ message: 'Group not found' });
+    if (!group) return res.status(404).json({ message: 'Trip not found' });
     res.json(group);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// --- 3. CREATE A NEW TRIP ---
-router.post('/', async (req, res) => {
+// --- 3. CREATE A NEW TRIP (🛡️ DEFENSIVE FIX) ---
+// Changed to '/create' to be explicit and safe
+router.post('/create', async (req, res) => {
   try {
-    const newGroup = new Group(req.body);
+    console.log("📝 Receiving Trip Data:", req.body); 
+
+    // ✅ FIX: Catch 'creatorId' from frontend and map it to 'creator'
+    const userId = req.body.creatorId || req.body.creator;
+
+    if (!userId) {
+      console.error("❌ Error: User ID is missing!");
+      return res.status(400).json({ message: "User ID is required." });
+    }
+
+    const newGroup = new Group({
+      ...req.body,
+      creator: userId // ✅ Explicitly linking the creator
+    });
+
     const savedGroup = await newGroup.save();
+    console.log("✅ Trip Saved:", savedGroup._id);
     res.status(201).json(savedGroup);
+
   } catch (err) {
+    console.error("❌ Create Error:", err);
     res.status(400).json({ message: err.message });
   }
 });
 
-// --- 4. JOIN A GROUP ---
-// Changed to POST to match Frontend
+// --- 4. JOIN A TRIP ---
 router.post('/:id/join', async (req, res) => {
   try {
     const group = await Group.findById(req.params.id);
-    const { userId } = req.body; 
+    const { userId } = req.body;
 
-    // Check if user is already a member or pending
     if (group.members.includes(userId) || group.pendingMembers.includes(userId)) {
-      return res.status(400).json({ message: "You have already joined or requested!" });
+      return res.status(400).json({ message: "Already joined or requested!" });
     }
 
     group.pendingMembers.push(userId);
@@ -78,12 +93,11 @@ router.post('/:id/join', async (req, res) => {
   }
 });
 
-// --- 5. GET EXPENSES (For the Bill Splitter) ---
+// --- 5. GET EXPENSES ---
 router.get('/:id/expenses', async (req, res) => {
     try {
         const group = await Group.findById(req.params.id);
-        if (!group) return res.status(404).json({ message: "Group not found" });
-        // Return the expenses array directly
+        if (!group) return res.status(404).json({ message: "Trip not found" });
         res.json(group.expenses || []);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -91,14 +105,13 @@ router.get('/:id/expenses', async (req, res) => {
 });
 
 // --- 6. ADD EXPENSE ---
-// Changed to POST to match Frontend
 router.post('/:id/expenses', async (req, res) => {
-  const { description, amount, paidBy } = req.body; // Matches Frontend Input
+  const { description, amount, paidBy } = req.body;
   try {
     const group = await Group.findById(req.params.id);
     
     const newExpense = {
-      title: description, // Mapping 'description' to 'title' in DB
+      title: description,
       amount: Number(amount),
       paidBy: paidBy,
       date: new Date()
@@ -107,26 +120,23 @@ router.post('/:id/expenses', async (req, res) => {
     group.expenses.push(newExpense);
     await group.save();
 
-    res.json(group.expenses); // Return updated expenses
+    res.json(group.expenses);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// --- 7. UPLOAD PHOTO TO GALLERY ---
-// Changed to POST to match Frontend
+// --- 7. UPLOAD PHOTO ---
 router.post('/:id/photos', async (req, res) => {
-  const { photoUrl } = req.body;
+  const { photoUrl, userId } = req.body; // Expect userId if possible
   try {
     const group = await Group.findById(req.params.id);
     
-    // Simple push string URL (since Frontend sends just URL)
-    // If your DB expects an object, change this line.
-    // Assuming schema is: gallery: [String]
-    group.gallery.push(photoUrl); 
+    // Push object for better structure
+    group.gallery.push({ url: photoUrl, uploadedBy: userId }); 
     
     await group.save();
-    res.json(group);
+    res.json(group.gallery);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

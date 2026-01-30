@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { Layout, ConfigProvider } from 'antd';
 import Navbar from './components/layout/Navbar';
 
@@ -59,7 +59,6 @@ const App = () => {
     >
       <AuthProvider>
         <GroupProvider>
-          <Router>
             <Layout className="layout" style={{ minHeight: "100vh", background: '#fff' }}>
 
               {/* 1. NAVBAR */}
@@ -97,8 +96,7 @@ const App = () => {
                 Travekla ©2025
               </Footer>
 
-            </Layout>
-          </Router>
+            </Layout>          
         </GroupProvider>
       </AuthProvider>
     </ConfigProvider>
