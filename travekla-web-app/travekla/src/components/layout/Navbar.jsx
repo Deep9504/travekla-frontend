@@ -47,7 +47,7 @@ const Navbar = () => {
   const navItems = [
     { label: <Link to="/" onClick={() => setMobileMenuOpen(false)}>Home</Link>, key: '/', icon: <HomeOutlined /> },
     { label: <Link to="/advisors" onClick={() => setMobileMenuOpen(false)}>Find Advisor</Link>, key: '/advisors', icon: <SearchOutlined /> },
-    { label: <Link to="/create-group" onClick={() => setMobileMenuOpen(false)}>Create Trip</Link>, key: '/create-group', icon: <RocketOutlined /> },
+    { label: <Link to="/create-trip" onClick={() => setMobileMenuOpen(false)}>Create Trip</Link>, key: '/create-group', icon: <RocketOutlined /> },
     ...(user ? [{
       label: <Link to="/my-trips" onClick={() => setMobileMenuOpen(false)}>My Trips</Link>,
       key: '/my-trips',

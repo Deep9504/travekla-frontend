@@ -8,6 +8,7 @@ const tripRoutes = require('./routes/trips');
 const adminRoute = require('./routes/admin');
 const userRoute = require('./routes/users');
 const paymentRoute = require('./routes/payments');
+const groupRoute = require('./routes/groups');
 
 const app = express();
 
@@ -30,6 +31,8 @@ app.use('/api/trips', tripRoutes);
 app.use('/api/admin', adminRoute);
 app.use('/api/users', userRoute);
 app.use('/api/payments', paymentRoute);
+app.use('/api/trips', groupRoute);  // For fetching trip details
+app.use('/api/group', groupRoute);
 
 // 👇👇 ADD THIS NEW LINE FOR ADMIN 👇👇
 app.use('/api/admin', require('./routes/admin'));

@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { Form, Input, DatePicker, InputNumber, Button, Card, message, Typography } from 'antd';
-import { RocketOutlined, DollarOutlined, CalendarOutlined } from '@ant-design/icons';
+import { RocketOutlined, TeamOutlined } from '@ant-design/icons'; // 👈 Added TeamOutlined icon
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,7 +22,9 @@ const CreateTrip = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...values,
-          creatorId: user.id || user._id, // Attach the logged-in user's ID
+          creatorId: user.id || user._id,
+          // Ensure capacity is a number just in case
+          capacity: Number(values.capacity) 
         }),
       });
 
@@ -30,7 +32,6 @@ const CreateTrip = () => {
 
       if (response.ok) {
         message.success("Trip Created Successfully! 🚀");
-        // Redirect to My Trips dashboard to see the status
         navigate('/my-trips'); 
       } else {
         message.error(data.message || "Failed to create trip");
@@ -56,7 +57,7 @@ const CreateTrip = () => {
            </Text>
         </div>
 
-        <Form layout="vertical" onFinish={onFinish}>
+        <Form layout="vertical" onFinish={onFinish} initialValues={{ capacity: 10 }}>
           
           <div style={{ display: 'flex', gap: 10 }}>
              <Form.Item label="From (Origin)" name="from" rules={[{ required: true }]} style={{ flex: 1 }}>
@@ -67,16 +68,33 @@ const CreateTrip = () => {
              </Form.Item>
           </div>
 
+          {/* 👇 UPDATED ROW: DATE | BUDGET | CAPACITY */}
           <div style={{ display: 'flex', gap: 10 }}>
-             <Form.Item label="Start Date" name="date" rules={[{ required: true }]} style={{ flex: 1 }}>
+             
+             {/* Date */}
+             <Form.Item label="Start Date" name="date" rules={[{ required: true }]} style={{ flex: 2 }}>
                <DatePicker style={{ width: '100%' }} size="large" />
              </Form.Item>
-             <Form.Item label="Estimated Budget (₹)" name="budget" rules={[{ required: true }]} style={{ flex: 1 }}>
+
+             {/* Budget */}
+             <Form.Item label="Budget (₹)" name="budget" rules={[{ required: true }]} style={{ flex: 1.5 }}>
                <InputNumber 
                  style={{ width: '100%' }} 
                  size="large" 
                  prefix="₹" 
                  placeholder="5000" 
+               />
+             </Form.Item>
+
+             {/* Capacity (NEW) */}
+             <Form.Item label="Capacity" name="capacity" rules={[{ required: true }]} style={{ flex: 1 }}>
+               <InputNumber 
+                 min={2} 
+                 max={100} 
+                 style={{ width: '100%' }} 
+                 size="large" 
+                 placeholder="10"
+                 prefix={<TeamOutlined style={{color: '#bfbfbf'}} />} 
                />
              </Form.Item>
           </div>

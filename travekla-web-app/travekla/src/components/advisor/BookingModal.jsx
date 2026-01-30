@@ -20,7 +20,7 @@ const BookingModal = ({ visible, onClose, advisor }) => {
 
       // 2. Configure Razorpay Popup
       const options = {
-        key: "rzp_test_YOUR_KEY_ID_HERE", // 👈 PASTE YOUR KEY ID HERE!
+        key: "rzp_test_S9inWIWBAG8Kn0", // 👈 PASTE YOUR KEY ID HERE!
         amount: order.amount,
         currency: "INR",
         name: "Travekla",

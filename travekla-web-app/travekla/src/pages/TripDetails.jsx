@@ -2,260 +2,314 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   Row, Col, Typography, Button, Card, Tag, Avatar, Timeline, 
-  message, Spin, Divider, Affix, Space 
+  message, Spin, Divider, Affix, Space, Tabs, Input, List, Modal, Tooltip 
 } from 'antd';
 import { 
-  ClockCircleOutlined, TeamOutlined, EnvironmentOutlined, 
-  CheckCircleFilled, UserOutlined, ArrowLeftOutlined, 
-  SafetyCertificateOutlined, HeartFilled, ShareAltOutlined,
-  ClockCircleFilled // 👈 Imported this icon
+  ClockCircleFilled, CheckCircleFilled, UserOutlined, ArrowLeftOutlined, 
+  SafetyCertificateOutlined, HeartFilled, HeartOutlined, ShareAltOutlined,
+  DollarCircleOutlined, CameraOutlined, PlusOutlined, DeleteOutlined
 } from '@ant-design/icons';
 import { AuthContext } from '../context/AuthContext';
 
 const { Title, Text, Paragraph } = Typography;
+const { TabPane } = Tabs;
 
 const TripDetails = () => {
   const { id } = useParams();
   const { user } = useContext(AuthContext);
+  
+  // Data States
   const [trip, setTrip] = useState(null);
+  const [expenses, setExpenses] = useState([]);
+  
+  // UI States
   const [loading, setLoading] = useState(true);
   const [joinLoading, setJoinLoading] = useState(false);
+  const [isSaved, setIsSaved] = useState(false); // Fake Save State
+  const [activeTab, setActiveTab] = useState("1");
 
-  // --- FETCH TRIP DETAILS ---
-  const fetchTrip = async () => {
+  // Input States (For Modals)
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [newExpense, setNewExpense] = useState({ description: "", amount: "" });
+  
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [newPhotoUrl, setNewPhotoUrl] = useState("");
+
+  // --- FETCH DATA ---
+  const fetchTripData = async () => {
     try {
+      // 1. Get Trip Info
       const res = await fetch(`https://travekla-web-app.onrender.com/api/trips`); 
       const data = await res.json();
       const foundTrip = data.find(t => t._id === id);
-      
-      if (foundTrip) {
-          setTrip(foundTrip);
-      } else {
-          message.error("Trip not found");
-      }
+      setTrip(foundTrip);
+
+      // 2. Get Expenses (Only if member, but we fetch safely)
+      const expRes = await fetch(`https://travekla-web-app.onrender.com/api/group/${id}/expenses`);
+      const expData = await expRes.json();
+      setExpenses(Array.isArray(expData) ? expData : []);
+
     } catch (error) {
-      console.error("Error fetching trip:", error);
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchTrip();
-  }, [id]);
+  useEffect(() => { fetchTripData(); }, [id]);
 
-  // --- JOIN LOGIC ---
+  // --- ACTIONS ---
+
+  // 1. Join Trip
   const handleJoin = async () => {
-      if(!user) {
-          message.warning("Please login to join this trip!");
-          return;
-      }
-
+      if(!user) return message.warning("Login to join!");
       setJoinLoading(true);
-
       try {
-          const res = await fetch(`https://travekla-web-app.onrender.com/api/trips/${id}/join`, {
+          await fetch(`https://travekla-web-app.onrender.com/api/trips/${id}/join`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ userId: user._id })
           });
-          
-          const data = await res.json();
-
-          if (res.ok) {
-              message.success("Request sent successfully! 📩");
-              fetchTrip(); // Refresh to update button
-          } else {
-              message.warning(data.message || "Failed to join");
-          }
-      } catch (error) {
-          console.error(error);
-          message.error("Connection Failed. Is Server Running?");
-      } finally {
-          setJoinLoading(false);
-      }
+          message.success("Request Sent! 📩");
+          fetchTripData();
+      } catch (e) { message.error("Failed to join"); }
+      setJoinLoading(false);
   };
 
-  if (loading) return <div style={{height: '100vh', display:'flex', justifyContent:'center', alignItems:'center'}}><Spin size="large" tip="Loading Adventure..." /></div>;
-  
-  if (!trip) return (
-      <div style={{textAlign:'center', marginTop: 100}}>
-          <h2>Trip not found</h2>
-          <Link to="/"><Button>Go Home</Button></Link>
-      </div>
-  );
+ // 1. IMPROVED ADD EXPENSE (Updates Instantly)
+  const handleAddExpense = async () => {
+    if(!newExpense.description || !newExpense.amount) return message.error("Fill details");
+    
+    try {
+        const res = await fetch(`https://travekla-web-app.onrender.com/api/trips/${id}/expenses`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                description: newExpense.description, 
+                amount: newExpense.amount,
+                paidBy: user.username || "Member"
+            })
+        });
 
-  // --- 🛡️ ULTRA-SAFE DATA HANDLING ---
+        if (res.ok) {
+            const updatedList = await res.json(); // 👈 Get the new list from server
+            setExpenses(updatedList);             // 👈 Update the screen immediately!
+            
+            message.success("Expense Added 💸");
+            setIsExpenseModalOpen(false);
+            setNewExpense({ description: "", amount: "" });
+        }
+    } catch (err) {
+        message.error("Failed to add expense");
+    }
+  };
+
+  // 2. IMPROVED ADD PHOTO (Updates Instantly)
+  const handleAddPhoto = async () => {
+    if(!newPhotoUrl) return;
+
+    try {
+        const res = await fetch(`https://travekla-web-app.onrender.com/api/trips/${id}/photos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                photoUrl: newPhotoUrl,
+                userId: user._id 
+            })
+        });
+
+        if (res.ok) {
+            const updatedGallery = await res.json(); // 👈 Get new gallery
+            
+            // We need to update the whole trip object to show new photos
+            setTrip(prev => ({ ...prev, gallery: updatedGallery })); 
+            
+            message.success("Photo Added 📸");
+            setIsPhotoModalOpen(false);
+            setNewPhotoUrl("");
+        }
+    } catch (err) {
+        message.error("Failed to add photo");
+    }
+  };
+
+  // 4. Share Function
+  const handleShare = () => {
+      navigator.clipboard.writeText(window.location.href);
+      message.success("Link Copied to Clipboard! 🔗");
+  };
+
+  // 5. Save Function
+  const handleSave = () => {
+      setIsSaved(!isSaved);
+      message.success(isSaved ? "Removed from Saved" : "Trip Saved to Wishlist ❤️");
+  };
+
+  if (loading) return <div style={{height: '100vh', display:'flex', justifyContent:'center', alignItems:'center'}}><Spin size="large" /></div>;
+  if (!trip) return <div>Trip Not Found</div>;
+
+  // --- LOGIC ---
   const creator = trip.creator || {}; 
   const isAdvisor = creator.role === 'advisor';
   const userId = user?._id ? user._id.toString() : "";
   
-  // 1. IS MEMBER?
-  const isMember = Array.isArray(trip.members) && trip.members.some(member => {
-      if (!member) return false;
-      const mId = typeof member === 'object' && member._id ? member._id.toString() : member.toString();
-      return mId === userId;
-  });
-
-  // 2. IS PENDING? (New Check!)
-  const isPending = Array.isArray(trip.joinRequests) && trip.joinRequests.some(req => {
-      if (!req) return false;
-      const rId = typeof req === 'object' && req._id ? req._id.toString() : req.toString();
-      return rId === userId;
-  });
-
+  const isMember = Array.isArray(trip.members) && trip.members.some(m => (typeof m === 'object' ? m._id : m) === userId);
+  const isPending = Array.isArray(trip.joinRequests) && trip.joinRequests.some(r => (typeof r === 'object' ? r._id : r) === userId);
   const isCreator = (creator._id === user?._id) || (trip.creator === user?._id);
+  const hasAccess = isMember || isCreator; // Only these people see Group Tab
 
-  const bgImage = isAdvisor 
-    ? "https://images.unsplash.com/photo-1518182170546-0766aa6f6914?q=80&w=2000&auto=format&fit=crop" 
-    : "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2000&auto=format&fit=crop";
+  // Bill Splitting Math
+  const totalExpense = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+  const memberCount = (trip.members?.length || 0) + 1; // +1 for host
+  const splitPerPerson = (totalExpense / (memberCount || 1)).toFixed(0);
 
   return (
-    <div style={{ background: '#f8f9fa', minHeight: '100vh' }}>
+    <div style={{ background: '#f0f2f5', minHeight: '100vh' }}>
       
-      {/* HERO HEADER */}
-      <div style={{ 
-          height: 400, 
-          backgroundImage: `url(${bgImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          position: 'relative'
-      }}>
-          <div style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.8) 100%)'}}></div>
+      {/* 📸 HERO HEADER */}
+      <div style={{ height: 350, background: '#001529', position: 'relative', overflow: 'hidden' }}>
+          <img src={trip.image || "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=2000"} 
+               style={{width:'100%', height:'100%', objectFit:'cover', opacity: 0.6}} />
           
-          <div style={{position:'absolute', top: 20, left: 20, zIndex: 10}}>
-            <Link to="/">
-                <Button shape="circle" icon={<ArrowLeftOutlined />} size="large" style={{background: 'rgba(255,255,255,0.2)', border:'none', color:'white'}} />
-            </Link>
+          <div style={{position:'absolute', bottom: 40, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 1200, padding: '0 20px', color: 'white'}}>
+             <Tag color="gold" style={{marginBottom: 10}}>{isAdvisor ? "EXPERT TRIP" : "COMMUNITY TRIP"}</Tag>
+             <Title style={{color:'white', margin: 0}}>{trip.to?.toUpperCase()}</Title>
+             <Text style={{color:'rgba(255,255,255,0.8)'}}><ClockCircleFilled /> {trip.duration || "3 Days"} • {trip.date ? new Date(trip.date).toLocaleDateString() : "Flexible"}</Text>
           </div>
-
-          <div style={{position:'absolute', bottom: 40, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 1200, padding: '0 20px'}}>
-             <Tag color={isAdvisor ? "#722ed1" : "#1890ff"} style={{border:'none', padding: '5px 15px', fontSize: 14, fontWeight:'bold', marginBottom: 10}}>
-                {isAdvisor ? "🔥 GUIDED TOUR" : "🎒 COMMUNITY TRIP"}
-             </Tag>
-             <Title style={{color:'white', margin: 0, fontSize: 'clamp(2rem, 5vw, 3.5rem)', textShadow: '0 4px 10px rgba(0,0,0,0.3)'}}>
-                {trip.to ? trip.to.toUpperCase() : "UNKNOWN"}
-             </Title>
-             <Text style={{color:'rgba(255,255,255,0.9)', fontSize: 18, fontWeight: 500}}>
-                 <EnvironmentOutlined /> Starting from {trip.from} • {trip.date ? new Date(trip.date).toLocaleDateString() : "Date TBA"}
-             </Text>
-          </div>
+          
+          {/* Back Button */}
+          <Link to="/" style={{position:'absolute', top: 20, left: 20}}>
+            <Button shape="circle" icon={<ArrowLeftOutlined />} size="large" ghost />
+          </Link>
       </div>
 
-      {/* MAIN CONTENT */}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 20px' }}>
-        <Row gutter={[40, 40]}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px' }}>
+        <Row gutter={[24, 24]}>
             
-            {/* LEFT COLUMN */}
+            {/* 👈 LEFT CONTENT: TABS */}
             <Col xs={24} md={16}>
-                <Card style={{borderRadius: 16, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', marginBottom: 30}}>
-                    <Row gutter={[16, 16]} justify="space-around" style={{textAlign:'center'}}>
-                        <Col span={6}>
-                            <ClockCircleOutlined style={{fontSize: 24, color: '#fa541c'}} />
-                            <div style={{fontWeight:'bold', marginTop: 5}}>3 Days</div>
-                            <Text type="secondary" style={{fontSize: 12}}>Duration</Text>
-                        </Col>
-                        <Col span={6}>
-                            <TeamOutlined style={{fontSize: 24, color: '#1890ff'}} />
-                            <div style={{fontWeight:'bold', marginTop: 5}}>{trip.capacity || 10} Spots</div>
-                            <Text type="secondary" style={{fontSize: 12}}>Group Size</Text>
-                        </Col>
-                        <Col span={6}>
-                            <SafetyCertificateOutlined style={{fontSize: 24, color: '#52c41a'}} />
-                            <div style={{fontWeight:'bold', marginTop: 5}}>Verified</div>
-                            <Text type="secondary" style={{fontSize: 12}}>Organizer</Text>
-                        </Col>
-                    </Row>
+                <Card style={{borderRadius: 12, minHeight: 500}}>
+                    <Tabs activeKey={activeTab} onChange={setActiveTab} size="large">
+                        
+                        {/* TAB 1: PUBLIC DETAILS */}
+                        <TabPane tab="TRIP DETAILS" key="1">
+                            <Title level={4}>About the Trip</Title>
+                            <Paragraph>{trip.description || "Join us for an amazing adventure!"}</Paragraph>
+                            <Divider />
+                            <Title level={4}>Itinerary</Title>
+                            <Timeline mode="left">
+                                {trip.itinerary?.length > 0 ? trip.itinerary.map((item, i) => (
+                                    <Timeline.Item key={i} color="blue">{item.activity}</Timeline.Item>
+                                )) : <Text type="secondary">Itinerary loading...</Text>}
+                            </Timeline>
+                        </TabPane>
+
+                        {/* TAB 2: PRIVATE GROUP LOUNGE (Protected) */}
+                        {hasAccess ? (
+                            <TabPane tab={<span><SafetyCertificateOutlined /> GROUP LOUNGE</span>} key="2">
+                                
+                                {/* 💰 EXPENSE SPLITTER */}
+                                <Card type="inner" title="💸 Split Bills" extra={<Button type="primary" size="small" onClick={() => setIsExpenseModalOpen(true)}>Add Expense</Button>}>
+                                    <Row gutter={16} style={{marginBottom: 20, textAlign:'center'}}>
+                                        <Col span={8}><Title level={4}>₹{totalExpense}</Title><Text type="secondary">Total Spent</Text></Col>
+                                        <Col span={8}><Title level={4}>{memberCount}</Title><Text type="secondary">Members</Text></Col>
+                                        <Col span={8}><Title level={4} style={{color: '#fa541c'}}>₹{splitPerPerson}</Title><Text type="secondary">Per Person</Text></Col>
+                                    </Row>
+                                    <List
+                                        size="small"
+                                        dataSource={expenses}
+                                        renderItem={item => (
+                                            <List.Item>
+                                                <List.Item.Meta
+                                                    avatar={<Avatar style={{background: '#87d068'}}>{item.paidBy[0]}</Avatar>}
+                                                    title={item.description}
+                                                    description={`Paid by ${item.paidBy}`}
+                                                />
+                                                <div style={{fontWeight:'bold'}}>₹{item.amount}</div>
+                                            </List.Item>
+                                        )}
+                                    />
+                                </Card>
+                                <br />
+
+                                {/* 📸 SHARED GALLERY */}
+                                <Card type="inner" title="📸 Shared Photos" extra={<Button icon={<CameraOutlined />} onClick={() => setIsPhotoModalOpen(true)}>Add Photo</Button>}>
+                                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 10}}>
+                                        {trip.gallery?.map((url, index) => (
+                                            <img key={index} src={url} style={{width:'100%', height: 100, objectFit:'cover', borderRadius: 8}} />
+                                        ))}
+                                        {(!trip.gallery || trip.gallery.length === 0) && <Text type="secondary">No photos yet.</Text>}
+                                    </div>
+                                </Card>
+
+                            </TabPane>
+                        ) : (
+                            <TabPane tab={<span><SafetyCertificateOutlined /> GROUP LOUNGE</span>} key="2" disabled>
+                                {/* Hidden for non-members */}
+                            </TabPane>
+                        )}
+                    </Tabs>
                 </Card>
-
-                <div style={{marginBottom: 40}}>
-                    <Title level={3}>About this Trip</Title>
-                    <Paragraph style={{fontSize: 16, lineHeight: 1.8, color: '#595959'}}>
-                        {trip.description || "No description provided."}
-                    </Paragraph>
-                </div>
-
-                <div style={{marginBottom: 40}}>
-                    <Title level={3}>Itinerary</Title>
-                    <Card style={{borderRadius: 16, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'}}>
-                        <Timeline mode="left" style={{marginTop: 20}}>
-                            {trip.itinerary && trip.itinerary.length > 0 ? (
-                                trip.itinerary.map((item, index) => (
-                                    <Timeline.Item key={index} label={<span style={{fontWeight:'bold'}}>Day {item.day}</span>}>
-                                        <Text strong style={{fontSize: 16}}>{item.activity}</Text>
-                                    </Timeline.Item>
-                                ))
-                            ) : (
-                                <Timeline.Item color="gray">No itinerary added yet.</Timeline.Item>
-                            )}
-                        </Timeline>
-                    </Card>
-                </div>
             </Col>
 
-            {/* RIGHT COLUMN */}
+            {/* 👉 RIGHT CONTENT: ACTION CARD */}
             <Col xs={24} md={8}>
-                <Affix offsetTop={100}>
-                    <Card style={{borderRadius: 16, border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', overflow:'hidden'}}>
-                        <div style={{background: '#f5f5f5', padding: 20, textAlign:'center', borderBottom:'1px solid #f0f0f0'}}>
-                            <Text type="secondary">Total Price Per Person</Text>
-                            <Title level={2} style={{margin:0, color: '#fa541c'}}>₹{trip.budget || 0}</Title>
-                        </div>
+                <Affix offsetTop={20}>
+                    <Card style={{borderRadius: 12, textAlign:'center', boxShadow: '0 10px 30px rgba(0,0,0,0.1)'}}>
+                        <Title level={2} style={{color: '#1890ff', margin: 0}}>₹{trip.budget}</Title>
+                        <Text type="secondary">Estimated Cost</Text>
+                        <Divider />
                         
-                        <div style={{padding: 20, textAlign:'center'}}>
-                            <Space align="center" style={{marginBottom: 20}}>
-                                <Avatar size={64} src={creator.avatar} icon={<UserOutlined />} style={{border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)'}} />
-                                <div style={{textAlign:'left'}}>
-                                    <div style={{fontWeight:'bold', fontSize: 16}}>{creator.name || "Unknown"}</div>
-                                    <Tag color="blue" style={{borderRadius: 10}}>{isAdvisor ? "Expert Guide" : "Trip Host"}</Tag>
-                                </div>
-                            </Space>
+                        {/* JOIN BUTTON LOGIC */}
+                        {isCreator ? (
+                            <Link to={`/manage-trip/${id}`}><Button block size="large">Manage Trip</Button></Link>
+                        ) : isMember ? (
+                            <Button block type="primary" size="large" style={{background: '#52c41a', borderColor: '#52c41a'}}>
+                                <CheckCircleFilled /> You are Going!
+                            </Button>
+                        ) : isPending ? (
+                            <Button block disabled size="large">Request Pending...</Button>
+                        ) : (
+                            <Button block type="primary" size="large" loading={joinLoading} onClick={handleJoin}>
+                                Request to Join
+                            </Button>
+                        )}
 
-                            {/* SMART BUTTON LOGIC */}
-                            {isCreator ? (
-                                <Link to={`/manage-trip/${id}`}>
-                                    <Button block size="large" style={{height: 50, fontSize: 16, fontWeight:'bold', borderColor:'#faad14', color:'#faad14'}}>
-                                        Manage Your Trip
-                                    </Button>
-                                </Link>
-                            ) : isMember ? (
-                                <Button block type="primary" size="large" style={{height: 50, fontSize: 16, background: '#52c41a', borderColor: '#52c41a'}} icon={<CheckCircleFilled />}>
-                                    Already Joined
-                                </Button>
-                            ) : isPending ? (
-                                /* 🚀 SHOW PENDING STATE */
-                                <Button block size="large" disabled style={{height: 50, fontSize: 16, fontWeight: 'bold', background: '#f0f2f5', color: '#faad14', borderColor: '#d9d9d9'}} icon={<ClockCircleFilled />}>
-                                    Approval Pending
-                                </Button>
-                            ) : (
-                                <Button 
-                                    type="primary" 
-                                    size="large" 
-                                    block 
-                                    loading={joinLoading}
-                                    onClick={handleJoin} 
-                                    style={{height: 50, fontSize: 18, background: '#fa541c', borderColor: '#fa541c', boxShadow: '0 4px 15px rgba(250, 84, 28, 0.4)'}}
-                                >
-                                    Request to Join
-                                </Button>
-                            )}
-
-                            <div style={{marginTop: 15, display:'flex', justifyContent:'center', gap: 10}}>
-                                <Button shape="circle" icon={<HeartFilled />} />
-                                <Button shape="circle" icon={<ShareAltOutlined />} />
-                            </div>
-
-                            <Divider />
-                            <div style={{fontSize: 12, color: '#8c8c8c'}}>
-                                <SafetyCertificateOutlined style={{color: '#52c41a'}} /> Secure Payment
-                            </div>
+                        <div style={{marginTop: 20, display:'flex', justifyContent:'space-around'}}>
+                             <Tooltip title="Save Trip">
+                                <Button shape="circle" size="large" icon={isSaved ? <HeartFilled style={{color:'red'}} /> : <HeartOutlined />} onClick={handleSave} />
+                             </Tooltip>
+                             <Tooltip title="Share Link">
+                                <Button shape="circle" size="large" icon={<ShareAltOutlined />} onClick={handleShare} />
+                             </Tooltip>
                         </div>
+
+                        {!hasAccess && <div style={{marginTop: 15, background: '#fffbe6', padding: 10, borderRadius: 8, fontSize: 12, border: '1px solid #ffe58f'}}>
+                            🔒 Join to unlock Bill Splitter & Photo Gallery
+                        </div>}
                     </Card>
                 </Affix>
             </Col>
-
         </Row>
       </div>
+
+      {/* --- MODALS --- */}
+      
+      {/* Add Expense Modal */}
+      <Modal title="Add Group Expense" open={isExpenseModalOpen} onOk={handleAddExpense} onCancel={() => setIsExpenseModalOpen(false)}>
+          <Input placeholder="What was it for? (e.g. Dinner)" style={{marginBottom: 10}} 
+                 value={newExpense.description} onChange={(e) => setNewExpense({...newExpense, description: e.target.value})} />
+          <Input prefix="₹" placeholder="Amount" type="number" 
+                 value={newExpense.amount} onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})} />
+      </Modal>
+
+      {/* Add Photo Modal */}
+      <Modal title="Add Photo Link" open={isPhotoModalOpen} onOk={handleAddPhoto} onCancel={() => setIsPhotoModalOpen(false)}>
+          <Input placeholder="Paste Image URL here..." 
+                 value={newPhotoUrl} onChange={(e) => setNewPhotoUrl(e.target.value)} />
+          <Text type="secondary" style={{fontSize: 12}}>*Currently supports direct image links.</Text>
+      </Modal>
+
     </div>
   );
 };
