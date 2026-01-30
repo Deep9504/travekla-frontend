@@ -6,7 +6,7 @@ import {
 } from 'antd';
 import { 
   ArrowLeftOutlined, SaveOutlined, UserOutlined, 
-  TeamOutlined, EditOutlined, DeleteOutlined, 
+  TeamOutlined, EditOutlined, 
   PlusOutlined, MinusCircleOutlined, CheckCircleOutlined, CloseCircleOutlined 
 } from '@ant-design/icons';
 import moment from 'moment';
@@ -24,27 +24,29 @@ const ManageTrip = () => {
   const [loading, setLoading] = useState(true);
   const [form] = Form.useForm();
 
-  // --- 1. FETCH DATA ---
+  // --- 1. FETCH DATA (FIXED 🛠️) ---
   const fetchTripData = async () => {
     try {
-      const res = await fetch('https://travekla-web-app.onrender.com/api/trips');
-      const data = await res.json();
-      const foundTrip = data.find(t => t._id === id);
+      // ✅ FIX 1: Fetch ONLY this trip by ID. 
+      // This forces the backend to "populate" the member details.
+      const res = await fetch(`https://travekla-web-app.onrender.com/api/trips/${id}`);
+      
+      if (!res.ok) throw new Error("Trip not found");
+      
+      const foundTrip = await res.json();
 
-      if (foundTrip) {
-        setTrip(foundTrip);
-        // Pre-fill form
-        form.setFieldsValue({
-          ...foundTrip,
-          date: foundTrip.date ? moment(foundTrip.date) : null,
-          itinerary: foundTrip.itinerary || [{ day: 1, activity: "" }] 
-        });
-      } else {
-        message.error("Trip not found!");
-        navigate('/');
-      }
+      setTrip(foundTrip);
+      
+      // Pre-fill form
+      form.setFieldsValue({
+        ...foundTrip,
+        date: foundTrip.date ? moment(foundTrip.date) : null,
+        itinerary: foundTrip.itinerary || [{ day: 1, activity: "" }] 
+      });
     } catch (error) {
       console.error("Error loading trip:", error);
+      message.error("Trip not found!");
+      navigate('/');
     } finally {
       setLoading(false);
     }
@@ -181,10 +183,15 @@ const ManageTrip = () => {
                             </Form>
                         </TabPane>
 
-                        {/* TAB 2: JOIN REQUESTS (REAL DATA NOW! 🚀) */}
-                        <TabPane tab={<span><TeamOutlined /> Requests <Tag color="red">{trip?.joinRequests?.length || 0}</Tag></span>} key="2">
+                        {/* TAB 2: JOIN REQUESTS (FIXED NAME 🚀) */}
+                        <TabPane 
+                            // ✅ FIX 2: Use 'pendingMembers' here
+                            tab={<span><TeamOutlined /> Requests <Tag color="red">{trip?.pendingMembers?.length || 0}</Tag></span>} 
+                            key="2"
+                        >
                             <List
-                                dataSource={trip?.joinRequests || []}
+                                // ✅ FIX 3: Use 'pendingMembers' as source
+                                dataSource={trip?.pendingMembers || []}
                                 locale={{ emptyText: "No pending requests." }}
                                 renderItem={reqUser => (
                                     <List.Item actions={[
