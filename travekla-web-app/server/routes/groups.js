@@ -141,5 +141,30 @@ router.post('/:id/photos', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+// --- 8. HANDLE REQUEST (ACCEPT / REJECT) - 🆕 THIS WAS MISSING! ---
+router.post('/:id/request/:action', async (req, res) => {
+  const { id, action } = req.params;
+  const { userId } = req.body; // The user being accepted/rejected
+
+  try {
+    const group = await Group.findById(id);
+    if (!group) return res.status(404).json({ message: "Trip not found" });
+
+    // 1. Always remove from pending list first
+    group.pendingMembers = group.pendingMembers.filter(memberId => memberId.toString() !== userId);
+
+    // 2. If action is 'accept', add to official members list
+    if (action === 'accept') {
+      if (!group.members.includes(userId)) {
+        group.members.push(userId);
+      }
+    }
+
+    await group.save();
+    res.json(group); // Send back updated group
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 module.exports = router;

@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import moment from 'moment';
 import { AuthContext } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -29,7 +30,7 @@ const ManageTrip = () => {
     try {
       // ✅ FIX 1: Fetch ONLY this trip by ID. 
       // This forces the backend to "populate" the member details.
-      const res = await fetch(`https://travekla-web-app.onrender.com/api/trips/${id}`);
+      const res = await fetch(`${API_BASE_URL}/trips/${id}`);
       
       if (!res.ok) throw new Error("Trip not found");
       
@@ -65,7 +66,7 @@ const ManageTrip = () => {
             date: values.date ? values.date.toISOString() : null,
         };
 
-        const res = await fetch(`https://travekla-web-app.onrender.com/api/trips/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/trips/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updateData)
@@ -88,7 +89,7 @@ const ManageTrip = () => {
           message.loading({ content: "Processing...", key: "req" });
           const endpoint = action === 'accept' ? 'accept' : 'reject';
           
-          const res = await fetch(`https://travekla-web-app.onrender.com/api/trips/${id}/request/${endpoint}`, {
+         const res = await fetch(`${API_BASE_URL}/trips/${id}/request/${endpoint}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ userId })
