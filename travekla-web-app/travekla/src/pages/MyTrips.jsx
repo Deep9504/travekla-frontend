@@ -1,32 +1,31 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Layout, Typography, Card, Tabs, List, Tag, Button, Spin, Avatar, Empty, Row, Col } from 'antd';
+import { Layout, Typography, Card, Tabs, List, Tag, Button, Spin, Avatar, Empty } from 'antd';
 import { 
   RocketOutlined, CheckCircleOutlined, ClockCircleOutlined, 
-  CalendarOutlined, UserOutlined, ArrowRightOutlined 
+  CalendarOutlined, UserOutlined 
 } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+// ✅ IMPORT SMART URL
+import { API_BASE_URL } from '../config';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 
 const MyTrips = () => {
   const { user } = useContext(AuthContext);
-  const navigate = useNavigate(); // Hook to redirect
+  const navigate = useNavigate();
   
   const [hosting, setHosting] = useState([]);
   const [joined, setJoined] = useState([]);
   const [pending, setPending] = useState([]);
-  
-  // 🌟 FIX: If user is missing, don't get stuck loading forever
   const [loading, setLoading] = useState(false); 
 
   useEffect(() => {
     if (user) {
-        setLoading(true); // Start loading ONLY when we have a user
+        setLoading(true);
         fetchAllMyTrips();
     } else {
-        // If no user after 1 second, stop loading (Safety Check)
         const timer = setTimeout(() => setLoading(false), 1000);
         return () => clearTimeout(timer);
     }
@@ -34,13 +33,13 @@ const MyTrips = () => {
 
   const fetchAllMyTrips = async () => {
     try {
-      // 1. Fetch Trips I Created (Hosting)
-      const resHost = await fetch(`https://travekla-web-app.onrender.com/api/trips/my-trips/${user._id}`);
+      // ✅ FIX 1: Use Smart URL for Hosting
+      const resHost = await fetch(`${API_BASE_URL}/trips/my-trips/${user._id}`);
       const dataHost = await resHost.json();
       setHosting(Array.isArray(dataHost) ? dataHost : []);
 
-      // 2. Fetch Trips I Joined/Requested (Traveling)
-      const resBooked = await fetch(`https://travekla-web-app.onrender.com/api/trips/booked-trips/${user._id}`);
+      // ✅ FIX 2: Use Smart URL for Booked
+      const resBooked = await fetch(`${API_BASE_URL}/trips/booked-trips/${user._id}`);
       const dataBooked = await resBooked.json();
 
       if(Array.isArray(dataBooked)) {
@@ -49,7 +48,6 @@ const MyTrips = () => {
 
           dataBooked.forEach(trip => {
             // Check if I am in the members list
-            // Handle both Object IDs and String IDs safely
             const isMember = trip.members.some(m => {
                 const id = typeof m === 'object' ? m._id : m;
                 return id === user._id;
@@ -122,7 +120,6 @@ const MyTrips = () => {
     />
   );
 
-  // 🛑 IF NOT LOGGED IN SHOW LOGIN BUTTON
   if (!user && !loading) {
       return (
           <div style={{textAlign:'center', marginTop: 100}}>
@@ -139,22 +136,20 @@ const MyTrips = () => {
       <Title level={2}>My Adventures 🌍</Title>
       
       <Tabs defaultActiveKey="1" type="card" size="large" style={{marginTop: 30}}>
-        
-        {/* TAB 1: JOINED (Confirmed Trips) */}
+        {/* TAB 1: JOINED */}
         <TabPane tab={<span><CheckCircleOutlined /> Confirmed ({joined.length})</span>} key="1">
             {renderTripList(joined, 'joined')}
         </TabPane>
 
-        {/* TAB 2: PENDING (Waiting List) */}
+        {/* TAB 2: PENDING */}
         <TabPane tab={<span><ClockCircleOutlined /> Pending Requests ({pending.length})</span>} key="2">
             {renderTripList(pending, 'pending')}
         </TabPane>
 
-        {/* TAB 3: HOSTING (My Created Trips) */}
+        {/* TAB 3: HOSTING */}
         <TabPane tab={<span><RocketOutlined /> Hosting ({hosting.length})</span>} key="3">
             {renderTripList(hosting, 'hosting')}
         </TabPane>
-
       </Tabs>
     </div>
   );

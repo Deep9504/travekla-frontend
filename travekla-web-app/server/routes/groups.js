@@ -166,5 +166,36 @@ router.post('/:id/request/:action', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+// --- 9. GET TRIPS I AM HOSTING (Created by me) ---
+router.get('/my-trips/:userId', async (req, res) => {
+  try {
+    const trips = await Group.find({ creator: req.params.userId })
+      .populate('creator', 'name avatar')
+      .sort({ createdAt: -1 });
+    res.json(trips);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// --- 10. GET TRIPS I JOINED OR REQUESTED ---
+router.get('/booked-trips/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    // Find trips where user is in 'members' OR 'pendingMembers'
+    const trips = await Group.find({
+      $or: [
+        { members: userId },
+        { pendingMembers: userId }
+      ]
+    })
+    .populate('creator', 'name avatar')
+    .sort({ date: 1 }); // Sort by trip date
+    
+    res.json(trips);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 module.exports = router;
