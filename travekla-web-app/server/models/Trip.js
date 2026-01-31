@@ -42,6 +42,19 @@ const TripSchema = new mongoose.Schema({
     activity: String 
   }],
 
+  // 👇 ADD THIS CHAT SECTION 👇
+  chat: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    message: String,
+    date: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+
   createdAt: { type: Date, default: Date.now }
 });
 

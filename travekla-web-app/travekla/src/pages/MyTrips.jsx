@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Layout, Typography, Card, Tabs, List, Tag, Button, Spin, Avatar, Empty } from 'antd';
+import { Layout, Typography, Card, Tabs, List, Tag, Button, Spin, Avatar, Empty, Row, Col } from 'antd';
 import { 
   RocketOutlined, CheckCircleOutlined, ClockCircleOutlined, 
-  CalendarOutlined, UserOutlined 
+  CalendarOutlined, UserOutlined, MessageOutlined, SettingOutlined 
 } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-// ✅ IMPORT SMART URL
 import { API_BASE_URL } from '../config';
 
 const { Title, Text } = Typography;
@@ -19,50 +18,47 @@ const MyTrips = () => {
   const [hosting, setHosting] = useState([]);
   const [joined, setJoined] = useState([]);
   const [pending, setPending] = useState([]);
-  const [loading, setLoading] = useState(false); 
+  const [loading, setLoading] = useState(true); 
+  const [activeTab, setActiveTab] = useState("1"); 
 
   useEffect(() => {
-    if (user) {
+    if (user && user._id) {
         setLoading(true);
         fetchAllMyTrips();
-    } else {
-        const timer = setTimeout(() => setLoading(false), 1000);
-        return () => clearTimeout(timer);
+    } else if (user === null) {
+        setLoading(false);
     }
   }, [user]);
 
   const fetchAllMyTrips = async () => {
     try {
-      // ✅ FIX 1: Use Smart URL for Hosting
       const resHost = await fetch(`${API_BASE_URL}/trips/my-trips/${user._id}`);
       const dataHost = await resHost.json();
-      setHosting(Array.isArray(dataHost) ? dataHost : []);
+      const hostTrips = Array.isArray(dataHost) ? dataHost : [];
+      setHosting(hostTrips);
 
-      // ✅ FIX 2: Use Smart URL for Booked
       const resBooked = await fetch(`${API_BASE_URL}/trips/booked-trips/${user._id}`);
       const dataBooked = await resBooked.json();
 
-      if(Array.isArray(dataBooked)) {
-          const joinedTrips = [];
-          const pendingTrips = [];
+      let joinedTrips = [];
+      let pendingTrips = [];
 
+      if(Array.isArray(dataBooked)) {
           dataBooked.forEach(trip => {
-            // Check if I am in the members list
             const isMember = trip.members.some(m => {
                 const id = typeof m === 'object' ? m._id : m;
                 return id === user._id;
             });
-
-            if (isMember) {
-                joinedTrips.push(trip);
-            } else {
-                pendingTrips.push(trip);
-            }
+            if (isMember) joinedTrips.push(trip);
+            else pendingTrips.push(trip);
           });
-
           setJoined(joinedTrips);
           setPending(pendingTrips);
       }
+
+      if (joinedTrips.length > 0) setActiveTab("1");
+      else if (pendingTrips.length > 0) setActiveTab("2");
+      else if (hostTrips.length > 0) setActiveTab("3");
 
     } catch (error) {
       console.error("Error loading trips:", error);
@@ -103,10 +99,21 @@ const MyTrips = () => {
                 </div>
             )}
 
+            {/* 🌟 HOSTING ACTIONS (Updated) */}
             {type === 'hosting' ? (
-                 <Link to={`/manage-trip/${trip._id}`}>
-                    <Button block style={{borderColor:'#722ed1', color:'#722ed1'}}>Manage Trip</Button>
-                 </Link>
+                 <Row gutter={8}>
+                    <Col span={12}>
+                        <Link to={`/manage-trip/${trip._id}`}>
+                            <Button block icon={<SettingOutlined />} style={{borderColor:'#722ed1', color:'#722ed1'}}>Manage</Button>
+                        </Link>
+                    </Col>
+                    <Col span={12}>
+                        {/* 🆕 This Button takes you to the Chat! */}
+                        <Link to={`/trip/${trip._id}`}>
+                            <Button block type="primary" icon={<MessageOutlined />} style={{background:'#722ed1', borderColor:'#722ed1'}}>Chat</Button>
+                        </Link>
+                    </Col>
+                 </Row>
             ) : (
                  <Link to={`/trip/${trip._id}`}>
                     <Button block type={type === 'joined' ? "primary" : "default"}>
@@ -120,33 +127,20 @@ const MyTrips = () => {
     />
   );
 
-  if (!user && !loading) {
-      return (
-          <div style={{textAlign:'center', marginTop: 100}}>
-              <h2>Please Login to see your trips 🔒</h2>
-              <Link to="/login"><Button type="primary" size="large">Login Now</Button></Link>
-          </div>
-      );
-  }
-
+  if (!user && !loading) return <div style={{textAlign:'center', marginTop: 100}}><Spin size="large" /></div>;
   if (loading) return <div style={{textAlign:'center', marginTop: 100}}><Spin size="large" /></div>;
 
   return (
     <div style={{ maxWidth: 1200, margin: '40px auto', padding: '0 20px' }}>
       <Title level={2}>My Adventures 🌍</Title>
       
-      <Tabs defaultActiveKey="1" type="card" size="large" style={{marginTop: 30}}>
-        {/* TAB 1: JOINED */}
+      <Tabs activeKey={activeTab} onChange={setActiveTab} type="card" size="large" style={{marginTop: 30}}>
         <TabPane tab={<span><CheckCircleOutlined /> Confirmed ({joined.length})</span>} key="1">
             {renderTripList(joined, 'joined')}
         </TabPane>
-
-        {/* TAB 2: PENDING */}
         <TabPane tab={<span><ClockCircleOutlined /> Pending Requests ({pending.length})</span>} key="2">
             {renderTripList(pending, 'pending')}
         </TabPane>
-
-        {/* TAB 3: HOSTING */}
         <TabPane tab={<span><RocketOutlined /> Hosting ({hosting.length})</span>} key="3">
             {renderTripList(hosting, 'hosting')}
         </TabPane>
