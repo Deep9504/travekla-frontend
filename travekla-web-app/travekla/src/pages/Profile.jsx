@@ -1,118 +1,172 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { Card, Avatar, Typography, Button, Tabs, Tag, Input, message, Alert, Steps, Switch, Modal } from 'antd';
+import { Card, Avatar, Typography, Button, Tabs, Tag, Input, message, Alert, Steps, Switch, Modal, Form } from 'antd';
 import {
-  UserOutlined, SafetyCertificateFilled, UploadOutlined,
-  CheckCircleFilled, ReloadOutlined, InstagramOutlined, CreditCardOutlined
+  UserOutlined, UploadOutlined, CheckCircleFilled, ReloadOutlined, 
+  InstagramOutlined, CreditCardOutlined, EditOutlined, 
+  EnvironmentOutlined, SaveOutlined 
 } from '@ant-design/icons';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+// ✅ IMPORT SMART URL
+import { API_BASE_URL } from '../config';
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
 
 const Profile = () => {
-  const { user, logout, updateUser } = useContext(AuthContext);
+  const { user, updateUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  // States
   const [docUrl, setDocUrl] = useState("");
   const [socialLink, setSocialLink] = useState("");
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  
+  // 🌟 NEW: PROFILE EDIT STATES
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [form] = Form.useForm();
 
-  // --- AUTO-REFRESH USER DATA ---
-  useEffect(() => { fetchLatestUserData(); }, []);
+  // --- 1. INITIAL DATA FETCH ---
+  useEffect(() => { 
+      if (user) {
+          fetchLatestUserData(); 
+      }
+  }, [user?._id]); // Only run if ID changes
+
+  // --- 🌟 CRITICAL FIX: ONLY FILL FORM WHEN MODAL OPENS ---
+  // This prevents the form from resetting while you are typing!
+  useEffect(() => {
+      if (isEditModalOpen && user) {
+          form.setFieldsValue({
+              name: user.name,
+              bio: user.bio,
+              location: user.location,
+              avatar: user.avatar
+          });
+      }
+  }, [isEditModalOpen]); 
 
   const fetchLatestUserData = async () => {
     if (!user) return;
     setRefreshing(true);
     try {
       const userId = user.id || user._id;
-      const res = await fetch(`https://travekla-web-app.onrender.com/api/auth/user/${userId}`);
+      const res = await fetch(`${API_BASE_URL}/users/${userId}`);
       const freshUser = await res.json();
-      if (freshUser && updateUser) updateUser(freshUser);
+      if (freshUser && updateUser) {
+          updateUser(freshUser);
+      }
     } catch (err) { console.log("Refresh error"); }
     setRefreshing(false);
   };
 
-  // --- 1. ROLE SWITCH ---
+  // --- UPDATE PROFILE FUNCTION ---
+  const handleUpdateProfile = async (values) => {
+      setLoading(true);
+      try {
+          const userId = user.id || user._id;
+          
+          const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(values)
+          });
+          
+          if (res.ok) {
+              const updatedUser = await res.json();
+              updateUser(updatedUser); // Update Context instantly
+              message.success("Profile Updated! ✨");
+              setIsEditModalOpen(false);
+          } else {
+              message.error("Update Failed");
+          }
+      } catch (error) {
+          console.error(error);
+          message.error("Server Error");
+      }
+      setLoading(false);
+  };
+
+  // 👇 NEW: Handle Delete
+  const handleDeleteAccount = async () => {
+    try {
+      const userId = user.id || user._id;
+      await fetch(`${API_BASE_URL}/users/${userId}`, { method: 'DELETE' });
+      message.success("Account Deleted");
+      
+      // Logout logic (assuming you have a logout function in Context)
+      localStorage.removeItem("user");
+      window.location.href = "/login"; 
+    } catch (err) {
+      message.error("Failed to delete");
+    }
+  };
+
+  // --- HANDLERS ---
   const handleRoleSwitch = async (checked) => {
     const newRole = checked ? 'advisor' : 'traveler';
     try {
       const userId = user.id || user._id;
-      await fetch('https://travekla-web-app.onrender.com/api/auth/switch-role', {
+      await fetch(`${API_BASE_URL}/users/${userId}`, { 
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, role: newRole })
+        body: JSON.stringify({ role: newRole })
       });
       message.success(`Switched to ${newRole.toUpperCase()}`);
       fetchLatestUserData();
     } catch (err) { message.error("Failed to switch"); }
   };
 
-  // --- 2. KYC SUBMIT ---
   const handleSubmitKYC = async () => {
     if (!docUrl) return message.error("Enter ID URL");
     setLoading(true);
     try {
       const userId = user.id || user._id;
-      const res = await fetch('https://travekla-web-app.onrender.com/api/auth/submit-kyc', {
+      const res = await fetch(`${API_BASE_URL}/users/apply-advisor/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, documentUrl: docUrl })
+        body: JSON.stringify({ socialLink: docUrl, about: user.bio }) 
       });
-      const data = await res.json();
-
-      if (data.success) {
-        // 👇 CORRECTED MESSAGE
+      
+      if (res.ok) {
         message.success("KYC Submitted! Waiting for Admin Approval.");
         fetchLatestUserData();
       }
-    } catch (err) {
-      message.error("Submission failed");
-    }
+    } catch (err) { message.error("Submission failed"); }
     setLoading(false);
   };
 
-  // --- 3. FINAL VERIFICATION ---
   const handleFinalVerification = async () => {
     setLoading(true);
     const userId = user.id || user._id;
+    try {
+        const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isVerified: true })
+        });
 
-    const res = await fetch('https://travekla-web-app.onrender.com/api/auth/verify-advisor', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId,
-        socialLink,
-        paymentSuccess: true
-      })
-    });
-
-    const data = await res.json();
-    if (data.success) {
-      message.success(data.message);
-      setIsPaymentModalOpen(false);
-      fetchLatestUserData();
-    } else {
-      message.error(data.message);
-    }
+        if (res.ok) {
+            message.success("Payment Successful! You are Verified ✅");
+            setIsPaymentModalOpen(false);
+            fetchLatestUserData();
+        }
+    } catch (e) { message.error("Verification failed"); }
     setLoading(false);
   };
 
   if (!user) return <div style={{ padding: 50 }}>Loading...</div>;
 
   const isAdvisor = user.role === 'advisor';
-  // Check strict statuses
   const kycDone = user.kycStatus === 'verified';
   const kycPending = user.kycStatus === 'pending';
-
   let currentStep = 0;
-  if (kycPending) currentStep = 0; // Stuck on step 0 until approved
+  if (kycPending) currentStep = 0;
   if (kycDone) currentStep = 1;
   if (user.isVerified) currentStep = 2;
 
-  // --- VERIFICATION TAB CONTENT ---
   const VerificationTab = () => (
     <div style={{ padding: 20 }}>
       {isAdvisor ? (
@@ -123,80 +177,127 @@ const Profile = () => {
             <Step title="Verified" description="Blue Badge" />
           </Steps>
 
-          {/* STEP 1: KYC Logic */}
-          {!kycDone && (
-            <Card title="Step 1: Identity Verification (Requirement D)">
+          {!kycDone && !user.isVerified && (
+            <Card title="Step 1: Identity Verification">
               {kycPending ? (
-                // 👇 SHOW THIS IF PENDING
                 <div style={{ textAlign: 'center', padding: 20 }}>
-                  <Alert
-                    message="Verification Pending"
-                    description="Your ID has been submitted and is waiting for Admin approval. You cannot proceed until approved."
-                    type="warning"
-                    showIcon
-                    style={{ marginBottom: 15 }}
-                  />
+                  <Alert message="Verification Pending" type="warning" showIcon style={{ marginBottom: 15 }} />
                   <Button icon={<ReloadOutlined />} onClick={fetchLatestUserData}>Check Status</Button>
                 </div>
               ) : (
-                // 👇 SHOW FORM IF NEW OR REJECTED
                 <>
-                  <Text>Upload your Government ID to proceed.</Text>
-                  <Input
-                    prefix={<UploadOutlined />}
-                    placeholder="Paste ID Link (e.g. Drive URL)"
-                    value={docUrl} onChange={e => setDocUrl(e.target.value)}
-                    style={{ marginTop: 10, marginBottom: 10 }}
-                  />
+                  <Text>Upload your Government ID.</Text>
+                  <Input prefix={<UploadOutlined />} placeholder="Paste ID Link" value={docUrl} onChange={e => setDocUrl(e.target.value)} style={{ marginTop: 10, marginBottom: 10 }} />
                   <Button type="primary" onClick={handleSubmitKYC} loading={loading}>Submit ID</Button>
                 </>
               )}
             </Card>
           )}
 
-          {/* STEP 2: SOCIAL + PAYMENT */}
           {kycDone && !user.isVerified && (
-            <Card title="Step 2: Social Media & Subscription (Requirement B & C)">
-              <Alert message="KYC Verified! Proceed to Step 2." type="success" showIcon style={{ marginBottom: 15 }} />
-
-              <Text strong>1. Social Media Profile</Text>
-              <Input
-                prefix={<InstagramOutlined />}
-                placeholder="https://instagram.com/yourname"
-                value={socialLink} onChange={e => setSocialLink(e.target.value)}
-                style={{ marginTop: 5, marginBottom: 20 }}
-              />
-
-              <Text strong>2. Monthly Subscription (Requirement C)</Text>
-              <div style={{ marginTop: 5 }}>
-                <Tag color="orange">₹199 / Month</Tag>
-                <Text type="secondary">Varies person to person</Text>
-              </div>
-
-              <Button
-                type="primary"
-                block
-                icon={<CreditCardOutlined />}
-                style={{ marginTop: 20, background: '#fa541c' }}
-                onClick={() => setIsPaymentModalOpen(true)}
-              >
-                Pay & Get Verified
-              </Button>
+            <Card title="Step 2: Social & Payment">
+              <Alert message="KYC Verified!" type="success" showIcon style={{ marginBottom: 15 }} />
+              <Input prefix={<InstagramOutlined />} placeholder="Instagram Link" value={socialLink} onChange={e => setSocialLink(e.target.value)} style={{ marginTop: 5, marginBottom: 20 }} />
+              <Button type="primary" block icon={<CreditCardOutlined />} style={{ background: '#fa541c' }} onClick={() => setIsPaymentModalOpen(true)}>Pay & Get Verified</Button>
             </Card>
           )}
 
-          {/* STEP 3: DONE */}
           {user.isVerified && (
             <Card style={{ textAlign: 'center', borderColor: '#52c41a', background: '#f6ffed' }}>
-              <CheckCircleFilled style={{ fontSize: 50, color: '#52c41a', marginBottom: 10 }} />
+              <CheckCircleFilled style={{ fontSize: 50, color: '#52c41a' }} />
               <Title level={3}>You are Verified!</Title>
-              <Text>Your profile is now ranked higher in search results.</Text>
             </Card>
           )}
         </>
       ) : (
         <Alert message="Switch to Advisor Mode to access Verification." type="warning" showIcon />
       )}
+    </div>
+  );
+
+  return (
+    <div style={{ maxWidth: 850, margin: '40px auto', padding: '0 20px' }}>
+      <Card>
+        {/* HEADER */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20 }}>
+          <Avatar size={100} src={user.avatar} icon={<UserOutlined />} />
+          
+          <div style={{ flex: 1 }}>
+            <div style={{display:'flex', alignItems:'center'}}>
+                <Title level={3} style={{ margin: 0, marginRight: 10 }}>{user.name}</Title>
+                {user.isVerified && <CheckCircleFilled style={{ color: '#1890ff', fontSize: 20 }} />}
+            </div>
+            
+            <Tag color={isAdvisor ? "purple" : "blue"} style={{marginTop: 5}}>{user.role.toUpperCase()}</Tag>
+            
+            <div style={{ marginTop: 8, color: '#666' }}>
+                <EnvironmentOutlined /> {user.location || "Add Location"}
+            </div>
+            <Paragraph ellipsis={{ rows: 2 }} style={{ marginTop: 5, color: '#888' }}>
+                {user.bio || "No bio yet."}
+            </Paragraph>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+            <Button type="primary" icon={<EditOutlined />} onClick={() => setIsEditModalOpen(true)}>Edit Profile</Button>
+            <Switch checked={isAdvisor} onChange={handleRoleSwitch} checkedChildren="Advisor" unCheckedChildren="Traveler" />
+          </div>
+        </div>
+
+       <Tabs defaultActiveKey="1" items={[
+      { key: '1', label: 'Verification Center', children: <VerificationTab /> },
+      
+      // 👇 UPDATED SETTINGS TAB
+      { key: '2', label: 'My Settings', children: (
+          <div style={{ padding: 20 }}>
+              <Title level={4} type="danger">Danger Zone</Title>
+              <Paragraph>
+                  Once you delete your account, there is no going back. Please be certain.
+              </Paragraph>
+              <Button 
+                  type="primary" danger 
+                  onClick={() => {
+                      Modal.confirm({
+                          title: 'Are you sure?',
+                          content: 'This action cannot be undone.',
+                          okText: 'Yes, Delete My Account',
+                          okType: 'danger',
+                          onOk: handleDeleteAccount
+                      });
+                  }}
+              >
+                  Delete Account
+              </Button>
+          </div>
+      )},
+    ]} />
+      </Card>
+
+      {/* EDIT MODAL */}
+      <Modal 
+        title="Edit Profile" 
+        open={isEditModalOpen} 
+        onCancel={() => setIsEditModalOpen(false)}
+        footer={null}
+      >
+        <Form form={form} layout="vertical" onFinish={handleUpdateProfile}>
+            <Form.Item name="name" label="Full Name" rules={[{ required: true }]}>
+                <Input prefix={<UserOutlined />} />
+            </Form.Item>
+            <Form.Item name="location" label="Location">
+                <Input prefix={<EnvironmentOutlined />} placeholder="e.g. Mumbai, India" />
+            </Form.Item>
+            <Form.Item name="bio" label="Bio">
+                <Input.TextArea rows={3} placeholder="Tell us about yourself..." />
+            </Form.Item>
+            <Form.Item name="avatar" label="Profile Picture URL">
+                <Input placeholder="Paste image link here..." />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" block size="large" icon={<SaveOutlined />} loading={loading}>
+                Save Changes
+            </Button>
+        </Form>
+      </Modal>
 
       {/* PAYMENT MODAL */}
       <Modal
@@ -210,38 +311,8 @@ const Profile = () => {
       >
         <p>You are paying <b>₹199</b> for the Monthly Verified Badge.</p>
         <p>Social Link: <b>{socialLink}</b></p>
-        <Text type="secondary">(This is a simulated payment gateway)</Text>
       </Modal>
-    </div>
-  );
 
-  return (
-    <div style={{ maxWidth: 850, margin: '40px auto', padding: '0 20px' }}>
-      <Card>
-        {/* HEADER */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20 }}>
-          <Avatar size={80} src={user.avatar} icon={<UserOutlined />} />
-          <div style={{ flex: 1 }}>
-            <Title level={3} style={{ margin: 0 }}>
-              {user.name}
-              {user.isVerified && <CheckCircleFilled style={{ color: '#1890ff', marginLeft: 8 }} />}
-            </Title>
-            <Tag color={isAdvisor ? "purple" : "blue"}>{user.role.toUpperCase()}</Tag>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
-            <Switch
-              checked={isAdvisor} onChange={handleRoleSwitch}
-              checkedChildren="Advisor" unCheckedChildren="Traveler"
-            />
-            <Button icon={<ReloadOutlined />} onClick={fetchLatestUserData} loading={refreshing}>Refresh</Button>
-          </div>
-        </div>
-
-        <Tabs defaultActiveKey="1" items={[
-          { key: '1', label: 'Verification Center', children: <VerificationTab /> },
-          { key: '2', label: 'My Settings', children: <div>Settings Content</div> },
-        ]} />
-      </Card>
     </div>
   );
 };

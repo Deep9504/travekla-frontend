@@ -34,6 +34,7 @@ app.use('/api/ai', aiRoute);
 app.use('/api/trips', groupRoute);  // For "/trips"
 app.use('/api/groups', groupRoute); // For "/groups" (The one in your screenshot!)
 app.use('/api/group', groupRoute);  // For "/group"
+app.use('/api/users', require('./routes/users'));
 
 // --- DATABASE CONNECTION ---
 mongoose.connect(process.env.MONGO_URI)
