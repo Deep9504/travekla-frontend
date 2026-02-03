@@ -5,8 +5,8 @@ const User = require('../models/User');
 
 // 👇 PASTE YOUR KEYS HERE
 const razorpay = new Razorpay({
-  key_id: 'rzp_test_S9inWIWBAG8Kn0',    // Paste your Key ID from Dashboard
-  key_secret: 'TQuDg78tab0tDvxwgj89M4Un'          // Paste your Key Secret from Dashboard
+  key_id: 'rzp_test_SBZuldO5pJESYo',    // Paste your Key ID from Dashboard
+  key_secret: 'Qne7tyvWl8E7l61PgwvQZT7D'          // Paste your Key Secret from Dashboard
 });
 
 // 1. CREATE ORDER (Frontend calls this first)
@@ -33,7 +33,7 @@ router.post('/verify', async (req, res) => {
 
     const sign = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSign = crypto
-      .createHmac("sha256", 'TQuDg78tab0tDvxwgj89M4Un') // 👈 PASTE SECRET AGAIN HERE
+      .createHmac("sha256", 'Qne7tyvWl8E7l61PgwvQZT7D') // 👈 PASTE SECRET AGAIN HERE
       .update(sign.toString())
       .digest("hex");
 
