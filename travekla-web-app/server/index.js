@@ -7,7 +7,7 @@ require('dotenv').config();
 const authRoute = require('./routes/auth');
 const userRoute = require('./routes/users');
 const adminRoute = require('./routes/admin');
-const paymentRoute = require('./routes/payments');
+const paymentRoute = require('./routes/payment');
 const bookingRoutes = require('./routes/bookings');
 const advisorsRoute = require('./routes/advisors'); 
 const aiRoute = require('./routes/ai');
@@ -25,7 +25,7 @@ app.use(express.json());
 app.use('/api/auth', authRoute);
 app.use('/api/users', userRoute);
 app.use('/api/admin', adminRoute);
-app.use('/api/payments', paymentRoute);
+app.use('/api/payment', paymentRoute);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/advisors', advisorsRoute);
 app.use('/api/ai', aiRoute);
@@ -35,7 +35,7 @@ app.use('/api/trips', groupRoute);  // For "/trips"
 app.use('/api/groups', groupRoute); // For "/groups" (The one in your screenshot!)
 app.use('/api/group', groupRoute);  // For "/group"
 app.use('/api/users', require('./routes/users'));
-app.use('/api/payment', require('./routes/payment'));
+app.use('/api/payment', require('./routes/payment'));  // ✅ CORRECT (no 's')
 app.use('/api/admin', require('./routes/admin'));
 
 // --- DATABASE CONNECTION ---
