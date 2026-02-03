@@ -21,7 +21,8 @@ router.post('/orders', async (req, res) => {
     const order = await razorpay.orders.create(options);
     res.json(order);
   } catch (error) {
-    console.error("Razorpay Order Error:", error); // 👈 Better logging
+    console.error("Razorpay Order Error:", error);
+    // 👇 Sending JSON so frontend doesn't crash
     res.status(500).json({ message: "Error creating order", details: error.message });
   }
 });
@@ -33,16 +34,16 @@ router.post('/verify', async (req, res) => {
 
     const sign = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSign = crypto
-      .createHmac("sha256", 'Qne7tyvWl8E7l61PgwvQZT7D') // 👈 Secret Key
+      .createHmac("sha256", 'Qne7tyvWl8E7l61PgwvQZT7D')
       .update(sign.toString())
       .digest("hex");
 
     if (razorpay_signature === expectedSign) {
-      // ✅ Payment Verified! Give the Blue Tick
+      // ✅ Payment Verified
       await User.findByIdAndUpdate(userId, { 
         isVerified: true,
         verificationRequestDate: new Date()
-      }); // 👈 Fixed: Removed the random 'F' here
+      }); 
       
       return res.json({ success: true, message: "Payment Verified" });
     } else {
