@@ -3,17 +3,17 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const User = require('../models/User');
 
-// 👇 PASTE YOUR KEYS HERE
+// 👇 YOUR KEYS (Make sure these match your Dashboard exactly)
 const razorpay = new Razorpay({
-  key_id: 'rzp_test_SBZuldO5pJESYo',    // Paste your Key ID from Dashboard
-  key_secret: 'Qne7tyvWl8E7l61PgwvQZT7D'          // Paste your Key Secret from Dashboard
+  key_id: 'rzp_test_SBZuldO5pJESYo', 
+  key_secret: 'Qne7tyvWl8E7l61PgwvQZT7D'
 });
 
-// 1. CREATE ORDER (Frontend calls this first)
+// 1. CREATE ORDER
 router.post('/orders', async (req, res) => {
   try {
     const options = {
-      amount: 199 * 100, // Amount in paise (199 * 100 = ₹199)
+      amount: 199 * 100, // ₹199
       currency: "INR",
       receipt: "receipt_" + Math.random().toString(36).substring(7),
     };
@@ -21,19 +21,19 @@ router.post('/orders', async (req, res) => {
     const order = await razorpay.orders.create(options);
     res.json(order);
   } catch (error) {
-    console.log(error);
-    res.status(500).send("Error creating order");
+    console.error("Razorpay Order Error:", error); // 👈 Better logging
+    res.status(500).json({ message: "Error creating order", details: error.message });
   }
 });
 
-// 2. VERIFY PAYMENT (Razorpay calls this after success)
+// 2. VERIFY PAYMENT
 router.post('/verify', async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, userId } = req.body;
 
     const sign = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSign = crypto
-      .createHmac("sha256", 'Qne7tyvWl8E7l61PgwvQZT7D') // 👈 PASTE SECRET AGAIN HERE
+      .createHmac("sha256", 'Qne7tyvWl8E7l61PgwvQZT7D') // 👈 Secret Key
       .update(sign.toString())
       .digest("hex");
 
@@ -42,13 +42,14 @@ router.post('/verify', async (req, res) => {
       await User.findByIdAndUpdate(userId, { 
         isVerified: true,
         verificationRequestDate: new Date()
-      });
+      }); // 👈 Fixed: Removed the random 'F' here
       
       return res.json({ success: true, message: "Payment Verified" });
     } else {
       return res.status(400).json({ message: "Invalid Signature" });
     }
   } catch (error) {
+    console.error("Verification Error:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
