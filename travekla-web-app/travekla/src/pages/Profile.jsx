@@ -277,6 +277,16 @@ const Profile = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+
+            {user.role === 'admin' && (
+                <Button 
+                    type="primary" 
+                    style={{ background: '#722ed1', borderColor: '#722ed1' }} 
+                    onClick={() => navigate('/admin')}
+                >
+                    Admin Dashboard
+                </Button>
+            )}
             <Button type="primary" icon={<EditOutlined />} onClick={() => setIsEditModalOpen(true)}>Edit Profile</Button>
             <Switch checked={isAdvisor} onChange={handleRoleSwitch} checkedChildren="Advisor" unCheckedChildren="Traveler" />
           </div>
