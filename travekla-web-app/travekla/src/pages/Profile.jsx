@@ -152,7 +152,7 @@ const Profile = () => {
 
       // 2. Open Razorpay
       const options = {
-        key: " rzp_test_SBZuldO5pJESYo", // 👈 PASTE KEY ID ONLY (No Secret)
+        key: "rzp_test_SBaTKRi5syCNA6", // 👈 PASTE KEY ID ONLY (No Secret)
         amount: orderData.amount,
         currency: "INR",
         name: "Travekla Verified",
