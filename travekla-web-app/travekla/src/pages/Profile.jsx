@@ -138,22 +138,60 @@ const Profile = () => {
     setLoading(false);
   };
 
+ // --- 3. FINAL VERIFICATION (REAL RAZORPAY) ---
   const handleFinalVerification = async () => {
     setLoading(true);
-    const userId = user.id || user._id;
     try {
-        const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ isVerified: true })
-        });
+      const userId = user.id || user._id;
 
-        if (res.ok) {
-            message.success("Payment Successful! You are Verified ✅");
-            setIsPaymentModalOpen(false);
-            fetchLatestUserData();
-        }
-    } catch (e) { message.error("Verification failed"); }
+      // 1. Create Order
+      const orderRes = await fetch(`${API_BASE_URL}/payment/orders`, {
+          method: 'POST',
+      });
+      const orderData = await orderRes.json();
+
+      // 2. Open Razorpay
+      const options = {
+        key: "rzp_test_PASTE_YOUR_ID_HERE", // 👈 PASTE KEY ID ONLY (No Secret)
+        amount: orderData.amount,
+        currency: "INR",
+        name: "Travekla Verified",
+        description: "Get the Blue Tick Badge",
+        order_id: orderData.id, 
+        handler: async function (response) {
+            
+            // 3. Verify Payment
+            message.loading("Verifying Payment...");
+            const verifyRes = await fetch(`${API_BASE_URL}/payment/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                    userId: userId
+                })
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+                message.success("Payment Successful! You are Verified ✅");
+                setIsPaymentModalOpen(false);
+                fetchLatestUserData(); 
+            } else {
+                message.error("Verification Failed");
+            }
+        },
+        theme: { color: "#1890ff" }
+      };
+
+      const rzp1 = new window.Razorpay(options);
+      rzp1.open();
+
+    } catch (e) { 
+        console.error(e);
+        message.error("Payment Failed"); 
+    }
     setLoading(false);
   };
 

@@ -1,5 +1,4 @@
-const express = require('express');
-const router = express.Router();
+const router = require('express').Router();
 const User = require('../models/User');
 const Trip = require('../models/Trip');
 
@@ -9,9 +8,9 @@ router.get('/stats', async (req, res) => {
     const pendingKYC = await User.countDocuments({ kycStatus: 'pending' });
     const pendingTrips = await Trip.countDocuments({ isVerified: false });
 
-    // Calculate Estimated Revenue (Advisors * ₹499)
+    // Calculate Estimated Revenue (Advisors * ₹199) - Updated to match your price
     const advisorCount = await User.countDocuments({ role: 'advisor' });
-    const revenue = advisorCount * 499; 
+    const revenue = advisorCount * 199; 
 
     res.json({ revenue, pendingKYC, pendingTrips });
   } catch (err) {
@@ -40,18 +39,19 @@ router.get('/trips-pending', async (req, res) => {
   }
 });
 
-// 4. HANDLE KYC ACTION (Approve/Reject) -- 🌟 UPDATED SECTION 🌟
+// 4. HANDLE KYC ACTION (Approve/Reject)
 router.put('/kyc-action', async (req, res) => {
-  const { userId, action } = req.body; // action will be 'approve' or 'reject'
+  const { userId, action } = req.body; 
   
   try {
     const status = action === 'approve' ? 'verified' : 'rejected';
-    const isVerified = action === 'approve'; // true if approved, false if rejected
-
-    // Update BOTH kycStatus and isVerified (Blue Tick)
+    
+    // ⚠️ CRITICAL CHANGE FOR MONETIZATION:
+    // We ONLY update 'kycStatus'. We do NOT set 'isVerified: true'.
+    // This ensures the user must still PAY ₹199 to get the Blue Tick.
+    
     const user = await User.findByIdAndUpdate(userId, { 
-        kycStatus: status,
-        isVerified: isVerified 
+        kycStatus: status
     }, { new: true });
     
     if (!user) return res.status(404).json({ message: "User not found" });

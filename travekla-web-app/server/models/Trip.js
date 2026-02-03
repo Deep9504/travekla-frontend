@@ -13,6 +13,8 @@ const TripSchema = new mongoose.Schema({
 
   // --- 2. PEOPLE ---
   creator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  // 👇 Add this line!
+  isVerified: { type: Boolean, default: false },
   
   // Confirmed Travelers
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], 
