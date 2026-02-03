@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { Layout, Menu, Button, Avatar, Dropdown, message, Drawer, Grid } from 'antd';
+import { Layout, Menu, Button, Avatar, Dropdown, message, Drawer, Grid, theme } from 'antd';
 import {
   HomeOutlined, RocketOutlined, UserOutlined, LogoutOutlined,
   LoginOutlined, SearchOutlined, CrownFilled, ScheduleOutlined, MenuOutlined
@@ -12,6 +12,7 @@ const { useBreakpoint } = Grid;
 
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
+  const { token } = theme.useToken();
   const navigate = useNavigate();
   const location = useLocation();
   const screens = useBreakpoint(); // Detect screen size
@@ -84,9 +85,9 @@ const Navbar = () => {
       justifyContent: 'space-between',
       padding: screens.md ? '0 50px' : '0 20px', // Responsive Padding
       height: '74px',
-      background: '#ffffff',
-      borderBottom: '1px solid #e1e4e8',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+      backgroundColor: token.colorBgContainer, // Use unified theme background
+      borderBottom: `1px solid ${token.colorSplit}`,
+      boxShadow: token.boxShadowTertiary
     }}>
       {/* 1. LOGO */}
       <div
@@ -97,19 +98,19 @@ const Navbar = () => {
         <div style={{
           width: 36,
           height: 36,
-          background: 'var(--primary)',
+          background: token.colorPrimary,
           borderRadius: 8,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 2px 5px rgba(44, 62, 80, 0.2)'
+          boxShadow: token.boxShadow
         }}>
-          <RocketOutlined style={{ fontSize: '20px', color: 'white' }} />
+          <RocketOutlined style={{ fontSize: '20px', color: '#fff' }} />
         </div>
         <span style={{
           fontSize: '22px',
           fontWeight: '700',
-          color: 'var(--primary)',
+          color: token.colorTextHeading,
           letterSpacing: '-0.5px',
           fontFamily: 'Poppins, sans-serif'
         }}>
@@ -124,14 +125,23 @@ const Navbar = () => {
             mode="horizontal"
             selectedKeys={[location.pathname]}
             items={navItems}
-            style={{ flex: 1, borderBottom: 'none', justifyContent: 'flex-end', background: 'transparent', fontSize: '14px', fontWeight: '500', marginRight: '40px', color: '#555' }}
+            style={{
+              flex: 1,
+              borderBottom: 'none',
+              justifyContent: 'flex-end',
+              background: 'transparent',
+              fontSize: '14px',
+              fontWeight: '500',
+              marginRight: '40px',
+              color: token.colorText
+            }}
           />
           {/* USER ACTION (Desktop) */}
           <div>
             {user ? (
               <Dropdown menu={{ items: menuItems }} placement="bottomRight" arrow>
-                <span className="hover-lift" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 12px', borderRadius: '30px', background: '#f5f5f5', transition: 'all 0.3s' }}>
-                  <Avatar src={user.avatar} icon={<UserOutlined />} style={{ backgroundColor: '#fa541c' }} />
+                <span className="hover-lift" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 12px', borderRadius: '30px', background: token.colorBgLayout, transition: 'all 0.3s' }}>
+                  <Avatar src={user.avatar} icon={<UserOutlined />} style={{ backgroundColor: token.colorPrimary, color: '#fff' }} />
                   <span style={{ fontWeight: 600, color: '#333' }}>
                     {user.name}
                   </span>
@@ -153,7 +163,8 @@ const Navbar = () => {
           icon={<MenuOutlined style={{ fontSize: 24 }} />}
           onClick={() => setMobileMenuOpen(true)}
         />
-      )}
+      )
+      }
 
       {/* 4. MOBILE DRAWER */}
       <Drawer
@@ -176,7 +187,7 @@ const Navbar = () => {
         />
       </Drawer>
 
-    </Header>
+    </Header >
   );
 };
 

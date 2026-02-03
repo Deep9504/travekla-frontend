@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Row, Col, Typography, Button, Input, Card, Carousel, Tag, Empty, Avatar, Spin, message } from 'antd';
+import { Row, Col, Typography, Button, Input, Card, Carousel, Tag, Empty, Avatar, Spin, message, theme } from 'antd';
 import {
   SearchOutlined, RocketOutlined, FireOutlined, DeleteOutlined,
   BankOutlined, CrownOutlined, SafetyCertificateOutlined,
@@ -22,6 +22,7 @@ const bestPlaces = ["Goa", "Manali", "Kerala", "Ladakh"];
 
 const Home = () => {
   const { user } = useContext(AuthContext);
+  const { token } = theme.useToken();
   const navigate = useNavigate();
 
   // STATE
@@ -132,18 +133,18 @@ const Home = () => {
               display: 'flex',
               flexDirection: 'column',
               border: '1px solid transparent', // Default border
-              color: 'var(--primary)',
-              background: 'white',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)' // Base shadow
+              color: token.colorPrimary,
+              background: token.colorBgContainer,
+              boxShadow: token.boxShadowTertiary // Base shadow
             }}
             className="hover:shadow-lg"
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.08)';
+              e.currentTarget.style.boxShadow = token.boxShadowlg;
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+              e.currentTarget.style.boxShadow = token.boxShadowTertiary;
             }}
           >
             {/* IMAGE CONTAINER */}
@@ -162,7 +163,7 @@ const Home = () => {
                 }}
               />
               {/* Replaced isCreator block with new Tag and text */}
-              <Tag color={isAdvisorTrip ? "var(--secondary)" : "var(--primary)"} style={{ position: 'absolute', top: 10, right: 10, border: 'none', fontWeight: 600, padding: '4px 8px', borderRadius: 4, color: 'white', fontSize: 11 }}>
+              <Tag color={isAdvisorTrip ? token.colorLinkHover : token.colorPrimary} style={{ position: 'absolute', top: 10, right: 10, border: 'none', fontWeight: 600, padding: '4px 8px', borderRadius: 4, color: 'white', fontSize: 11 }}>
                 {isAdvisorTrip ? "ADVISOR TRIP" : "YOUR TRIP"}
               </Tag>
             </div>
@@ -172,7 +173,7 @@ const Home = () => {
 
               {/* Header: Title & Rating/Date */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                <Title level={5} style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#2d3436', lineHeight: 1.4 }}>
+                <Title level={5} style={{ margin: 0, fontSize: 16, fontWeight: 600, color: token.colorTextHeading, lineHeight: 1.4 }}>
                   {group.to}
                 </Title>
                 <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, color: '#2d3436' }}>
@@ -202,7 +203,7 @@ const Home = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}> {/* Slightly darker background */}
+    <div style={{ minHeight: '100vh', background: token.colorBgLayout }}>
 
       {/* 1. HERO SECTION */}
       <div style={{
@@ -221,12 +222,12 @@ const Home = () => {
             Find Your Tribe.
           </Title>
           <Text style={{ color: 'rgba(255,255,255,0.95)', fontSize: '1.5rem', display: 'block', marginTop: 10, fontWeight: 500 }}>
-            Don't travel solo. Travel <span style={{ fontWeight: '800', color: '#fa541c', textDecoration: 'underline' }}>Ekla</span>, together.
+            Don't travel solo. Travel <span style={{ fontWeight: '800', color: token.colorLinkHover, textDecoration: 'underline' }}>Ekla</span>, together.
           </Text>
 
           <div style={{ marginTop: 30 }}>
             <Link to="/create-trip">
-              <Button type="primary" size="large" icon={<RocketOutlined />} style={{ height: 52, padding: '0 45px', fontSize: 18, borderRadius: 30, background: '#fa541c', borderColor: '#fa541c', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(250, 84, 28, 0.4)' }}>
+              <Button type="primary" size="large" icon={<RocketOutlined />} style={{ height: 52, padding: '0 45px', fontSize: 18, borderRadius: 30, fontWeight: 'bold', boxShadow: `0 4px 15px ${token.colorPrimary}40` }}>
                 Create a Trip
               </Button>
             </Link>
@@ -241,16 +242,16 @@ const Home = () => {
           <Input
             size="large"
             placeholder="Search destination (e.g. Goa, Manali)"
-            prefix={<SearchOutlined style={{ color: '#262626', fontSize: 20, fontWeight: 'bold' }} />}
+            prefix={<SearchOutlined style={{ color: token.colorText, fontSize: 20, fontWeight: 'bold' }} />}
             value={searchText}
             onChange={handleSearch}
-            style={{ borderRadius: 8, background: '#f0f2f5', border: '1px solid #d9d9d9', padding: '12px 20px', fontSize: 16, color: '#262626' }}
+            style={{ borderRadius: 8, background: token.colorBgLayout, border: `1px solid ${token.colorSplit}`, padding: '12px 20px', fontSize: 16, color: token.colorText }}
           />
 
           <div style={{ marginTop: 15, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Text strong style={{ color: '#262626' }}><FireOutlined style={{ color: '#fa541c' }} /> Trending:</Text>
+            <Text strong style={{ color: token.colorText }}><FireOutlined style={{ color: token.colorLinkHover }} /> Trending:</Text>
             {bestPlaces.map(place => (
-              <Tag key={place} style={{ cursor: 'pointer', borderRadius: 6, border: '1px solid #ffbb96', background: '#fff2e8', color: '#d4380d', padding: '4px 12px', fontWeight: 600 }} onClick={() => handleSearch(place)}>
+              <Tag key={place} style={{ cursor: 'pointer', borderRadius: 6, border: `1px solid ${token.colorLinkHover}`, background: token.colorBgLayout, color: token.colorLinkHover, padding: '4px 12px', fontWeight: 600 }} onClick={() => handleSearch(place)}>
                 {place}
               </Tag>
             ))}
@@ -261,7 +262,7 @@ const Home = () => {
       {/* 3. LIVE TICKER (High Visibility Dark Bar) */}
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px' }}>
         <div style={{
-          background: 'var(--secondary)', // Dark background
+          background: token.colorPrimary, // Dark background
           color: 'white',
           borderRadius: 8,
           padding: '12px 20px',
@@ -270,7 +271,7 @@ const Home = () => {
           alignItems: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
         }}>
-          <Tag color="var(--secondary)" style={{ borderRadius: 4, marginRight: 15, fontWeight: 'bold', padding: '2px 10px', border: 'none' }}>🔴 LIVE NOW</Tag>
+          <Tag color={token.colorLinkHover} style={{ borderRadius: 4, marginRight: 15, fontWeight: 'bold', padding: '2px 10px', border: 'none' }}>🔴 LIVE NOW</Tag>
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <Carousel autoplay dots={false} effect="fade" autoplaySpeed={3000} style={{ width: '100%' }}>
               {liveActivities.map((msg, i) => (
@@ -303,7 +304,7 @@ const Home = () => {
           <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" tip="Loading trips..." /></div>
         ) : (
           <>
-            <Title level={3} style={{ marginBottom: 20, color: '#262626' }}>🚀 Upcoming Adventures</Title>
+            <Title level={3} style={{ marginBottom: 20, color: token.colorTextHeading }}>🚀 Upcoming Adventures</Title>
             <Row gutter={[24, 24]}>
               {upcomingGroups?.length > 0 ? upcomingGroups.map(g => renderTripCard(g, false)) : (
                 <Col span={24}><Empty description="No trips found matching your search." /></Col>

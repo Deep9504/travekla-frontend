@@ -1,25 +1,27 @@
 /* 1. Global Reset & Fonts */
 :root {
-  /* Professional Palette */
-  --primary: #2c3e50;
-  /* Deep Slate Blue - Professional, Trustworthy */
-  --primary-hover: #34495e;
-  --secondary: #e67e22;
-  /* Muted Orange/Bronze - Subtle Accent */
-  --logo-color: #2c3e50;
+  /* Professional Palette (Slate & Muted Gold) */
+  --primary: #2c3e50;      /* Charcoal/Slate Blue */
+  --primary-hover: #34495e; 
+  --secondary: #c5a059;    /* Muted Gold - Elegant Accent */
+  --secondary-hover: #d4ac6e;
 
+  --success: #27ae60;
+  --error: #e74c3c;
+  
   --dark: #2d3436;
   --light: #ffffff;
-  --bg-color: #f4f6f8;
-  /* Cool Gray Background */
+  --gray: #95a5a6;
+  
+  --bg-color: #f8f9fa;     /* Light Gray/Off-white */
+  
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(226, 232, 240, 0.8);
 
-  --glass-bg: #ffffff;
-  /* Solid White */
-  --glass-border: #dfe6e9;
-
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.12);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 * {

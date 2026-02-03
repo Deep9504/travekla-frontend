@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ConfigProvider } from 'antd';
+import { themeConfig } from './theme/themeConfig';
 import { GoogleOAuthProvider } from '@react-oauth/google'; // 👈 Import Google
 import { AuthProvider } from './context/AuthContext';      // 👈 Import AuthContext
 import { GroupProvider } from './context/GroupContext';
@@ -15,21 +16,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     {/* 1. Wrap entire app with GoogleOAuthProvider */}
     <GoogleOAuthProvider clientId={clientId}>
-      
+
       {/* 2. Wrap with AuthProvider so login state works everywhere */}
       <AuthProvider>
-        
-        <ConfigProvider
-          theme={{
-            token: {
-              colorPrimary: '#fa541c',
-              borderRadius: 8,
-            },
-          }}
-        >
+
+        <ConfigProvider theme={themeConfig}>
           <GroupProvider>
             <HashRouter>
-            <App />
+              <App />
             </HashRouter>
           </GroupProvider>
         </ConfigProvider>
