@@ -22,5 +22,15 @@ router.post('/', async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 });
+// GET ALL VERIFIED ADVISORS
+router.get('/', async (req, res) => {
+  try {
+    // 🔍 Fetch only verified advisors
+    const advisors = await User.find({ role: 'advisor', isVerified: true });
+    res.json(advisors);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 module.exports = router;

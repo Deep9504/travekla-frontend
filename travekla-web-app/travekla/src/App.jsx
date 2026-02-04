@@ -17,6 +17,7 @@ import CreateTrip from './pages/CreateTrip';
 import TripDetails from './pages/TripDetails';
 import MyTrips from './pages/MyTrips';
 import BecomeAdvisor from "./pages/BecomeAdvisor";
+import FindAdvisor from './pages/FindAdvisor';
 
 // --- ADMIN PAGES ---
 // 👇 IMPORTANT: Ensure this path matches where you saved your file
@@ -58,6 +59,7 @@ const App = () => {
                 <Route path="/trip/:id" element={<TripDetails />} />
                 <Route path="/my-trips" element={<MyTrips />} />
                 <Route path="/become-advisor" element={<BecomeAdvisor />} />
+                <Route path="/advisors" element={<FindAdvisor />} />
 
                 {/* --- ADMIN ROUTES (FIXED) --- */}
                 {/* 👇 CHANGE THIS LINE. Point /admin directly to the Dashboard */}
