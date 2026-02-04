@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Input, Row, Col, Avatar, Button, Tag, Typography, Spin, Empty } from 'antd';
-import { SearchOutlined, UserOutlined, EnvironmentOutlined, CheckCircleFilled } from '@ant-design/icons';
+import { Card, Input, Row, Col, Avatar, Button, Tag, Typography, Spin, Empty, Rate, Badge } from 'antd';
+import { SearchOutlined, UserOutlined, CheckCircleFilled, MessageOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
 
-const { Meta } = Card;
 const { Title, Text } = Typography;
 
 const FindAdvisor = () => {
   const [advisors, setAdvisors] = useState([]);
   const [filteredAdvisors, setFilteredAdvisors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchText, setSearchText] = useState("");
   const navigate = useNavigate();
 
-  // 1. FETCH ADVISORS
+  // 1. FETCH REAL ADVISORS
   useEffect(() => {
     const fetchAdvisors = async () => {
       try {
@@ -34,7 +32,6 @@ const FindAdvisor = () => {
   // 2. SEARCH FUNCTION
   const handleSearch = (e) => {
     const value = e.target.value.toLowerCase();
-    setSearchText(value);
     const filtered = advisors.filter(advisor => 
       advisor.name.toLowerCase().includes(value) || 
       (advisor.location && advisor.location.toLowerCase().includes(value))
@@ -45,16 +42,16 @@ const FindAdvisor = () => {
   return (
     <div style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto' }}>
       
-      {/* HEADER & SEARCH */}
-      <div style={{ textAlign: 'center', marginBottom: 40 }}>
-        <Title level={2}>Find Your Local Expert 🌍</Title>
-        <Text type="secondary">Connect with verified advisors for your next trip.</Text>
+      {/* HEADER SECTION */}
+      <div style={{ textAlign: 'center', marginBottom: 50 }}>
+        <Title level={2}>Find Your Travel Guru 🧘‍♂️</Title>
+        <Text type="secondary" style={{ fontSize: 16 }}>Connect with verified experts for Visa, Itinerary, and Local Hacks.</Text>
         <br /><br />
         <Input 
           size="large" 
           placeholder="Search by name or location (e.g., 'Goa')" 
           prefix={<SearchOutlined />} 
-          style={{ maxWidth: 500 }}
+          style={{ maxWidth: 500, borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
           onChange={handleSearch}
         />
       </div>
@@ -65,33 +62,58 @@ const FindAdvisor = () => {
       ) : filteredAdvisors.length === 0 ? (
         <Empty description="No advisors found matching your search." />
       ) : (
-        <Row gutter={[24, 24]}>
+        <Row gutter={[30, 30]}>
           {filteredAdvisors.map(advisor => (
             <Col xs={24} sm={12} md={8} lg={6} key={advisor._id}>
-              <Card
-                hoverable
-                cover={
-                  <div style={{ height: 150, background: 'linear-gradient(135deg, #1890ff 0%, #0050b3 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                     <Avatar size={100} src={advisor.avatar} icon={<UserOutlined />} style={{ border: '4px solid white' }} />
-                  </div>
-                }
-                actions={[
-                    <Button type="link" onClick={() => navigate(`/profile/${advisor._id}`)}>View Profile</Button>
-                ]}
-              >
-                <div style={{ textAlign: 'center' }}>
-                    <Title level={4} style={{ marginBottom: 5 }}>
-                        {advisor.name} <CheckCircleFilled style={{ color: '#1890ff', fontSize: 16 }} />
-                    </Title>
-                    <Tag color="purple">ADVISOR</Tag>
-                    <div style={{ marginTop: 10, color: '#666' }}>
-                        <EnvironmentOutlined /> {advisor.location || "Global"}
+              
+              {/* ✨ THE "VERIFIED PRO" CARD STYLE ✨ */}
+              <Badge.Ribbon text="Verified Pro" color="gold">
+                <Card
+                  hoverable
+                  style={{ borderRadius: 12, textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}
+                  bodyStyle={{ padding: '30px 20px' }}
+                  actions={[
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 20px', alignItems: 'center' }}>
+                       <div style={{ textAlign: 'left' }}>
+                          <Text type="secondary" style={{ fontSize: 12 }}>Hourly Rate</Text>
+                          <div style={{ fontWeight: 'bold', fontSize: 16 }}>₹499</div>
+                       </div>
+                       <Button type="primary" shape="round" icon={<MessageOutlined />} style={{ background: '#2f3542', border: 'none' }} onClick={() => navigate(`/profile/${advisor._id}`)}>
+                          Hire Now
+                       </Button>
                     </div>
-                    <p style={{ marginTop: 10, color: '#888', height: 40, overflow: 'hidden' }}>
-                        {advisor.bio || "Ready to help you plan!"}
-                    </p>
-                </div>
-              </Card>
+                  ]}
+                >
+                  {/* Avatar */}
+                  <Avatar 
+                    size={100} 
+                    src={advisor.avatar} 
+                    icon={<UserOutlined />} 
+                    style={{ marginBottom: 15, border: '4px solid #f0f2f5' }} 
+                  />
+
+                  {/* Name & Tick */}
+                  <Title level={4} style={{ marginBottom: 5 }}>
+                    {advisor.name} <CheckCircleFilled style={{ color: '#1890ff', fontSize: 18 }} />
+                  </Title>
+
+                  {/* Star Rating (Fake for now) */}
+                  <Rate disabled defaultValue={5} style={{ fontSize: 14, color: '#fadb14' }} />
+                  <Text type="secondary" style={{ marginLeft: 5 }}>(12)</Text>
+
+                  {/* Bio */}
+                  <p style={{ marginTop: 15, color: '#666', height: 42, overflow: 'hidden', fontSize: 14 }}>
+                    {advisor.bio || `Expert in ${advisor.location || "Travel"} & Local Gems.`}
+                  </p>
+
+                  {/* Tags */}
+                  <div style={{ marginTop: 15 }}>
+                    <Tag color="blue">{advisor.location || "Global"}</Tag>
+                    <Tag color="cyan">Itinerary</Tag>
+                  </div>
+
+                </Card>
+              </Badge.Ribbon>
             </Col>
           ))}
         </Row>
