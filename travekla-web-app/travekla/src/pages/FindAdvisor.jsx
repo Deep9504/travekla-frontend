@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Input, Row, Col, Avatar, Button, Tag, Typography, Spin, Empty, Rate, Badge } from 'antd';
-import { SearchOutlined, UserOutlined, CheckCircleFilled, MessageOutlined } from '@ant-design/icons';
+import { Card, Input, Row, Col, Avatar, Button, Tag, Typography, Spin, Empty, Badge, Rate } from 'antd';
+import { SearchOutlined, UserOutlined, CheckCircleFilled, MessageOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
 
@@ -12,7 +12,7 @@ const FindAdvisor = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // 1. FETCH REAL ADVISORS
+  // 1. FETCH REAL ADVISORS FROM BACKEND
   useEffect(() => {
     const fetchAdvisors = async () => {
       try {
@@ -29,7 +29,7 @@ const FindAdvisor = () => {
     fetchAdvisors();
   }, []);
 
-  // 2. SEARCH FUNCTION
+  // 2. SEARCH FILTER
   const handleSearch = (e) => {
     const value = e.target.value.toLowerCase();
     const filtered = advisors.filter(advisor => 
@@ -40,12 +40,14 @@ const FindAdvisor = () => {
   };
 
   return (
-    <div style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto', background: '#f9f9f9', minHeight: '100vh' }}>
       
-      {/* HEADER SECTION */}
+      {/* HEADER */}
       <div style={{ textAlign: 'center', marginBottom: 50 }}>
         <Title level={2}>Find Your Travel Guru 🧘‍♂️</Title>
-        <Text type="secondary" style={{ fontSize: 16 }}>Connect with verified experts for Visa, Itinerary, and Local Hacks.</Text>
+        <Text type="secondary" style={{ fontSize: 16 }}>
+            Connect with verified experts for Visa, Itinerary, and Local Hacks.
+        </Text>
         <br /><br />
         <Input 
           size="large" 
@@ -60,56 +62,65 @@ const FindAdvisor = () => {
       {loading ? (
         <div style={{ textAlign: 'center', marginTop: 50 }}><Spin size="large" /></div>
       ) : filteredAdvisors.length === 0 ? (
-        <Empty description="No advisors found matching your search." />
+        <Empty description="No advisors found. Be the first!" />
       ) : (
         <Row gutter={[30, 30]}>
           {filteredAdvisors.map(advisor => (
             <Col xs={24} sm={12} md={8} lg={6} key={advisor._id}>
               
-              {/* ✨ THE "VERIFIED PRO" CARD STYLE ✨ */}
+              {/* ✨ THE "VERIFIED PRO" BADGE ✨ */}
               <Badge.Ribbon text="Verified Pro" color="gold">
                 <Card
                   hoverable
                   style={{ borderRadius: 12, textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}
                   bodyStyle={{ padding: '30px 20px' }}
                   actions={[
+                    // BOTTOM ACTION BAR
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 20px', alignItems: 'center' }}>
                        <div style={{ textAlign: 'left' }}>
                           <Text type="secondary" style={{ fontSize: 12 }}>Hourly Rate</Text>
-                          <div style={{ fontWeight: 'bold', fontSize: 16 }}>₹499</div>
+                          <div style={{ fontWeight: 'bold', fontSize: 16 }}>₹599</div>
                        </div>
-                       <Button type="primary" shape="round" icon={<MessageOutlined />} style={{ background: '#2f3542', border: 'none' }} onClick={() => navigate(`/profile/${advisor._id}`)}>
+                       <Button 
+                            type="primary" 
+                            shape="round" 
+                            icon={<MessageOutlined />} 
+                            style={{ background: '#2f3542', border: 'none' }} 
+                            onClick={() => navigate(`/profile/${advisor._id}`)} // 👈 Links to Real Profile!
+                        >
                           Hire Now
                        </Button>
                     </div>
                   ]}
                 >
-                  {/* Avatar */}
+                  {/* 1. REAL AVATAR */}
                   <Avatar 
                     size={100} 
-                    src={advisor.avatar} 
+                    src={advisor.avatar || "https://cdn-icons-png.flaticon.com/512/4140/4140048.png"} 
                     icon={<UserOutlined />} 
                     style={{ marginBottom: 15, border: '4px solid #f0f2f5' }} 
                   />
 
-                  {/* Name & Tick */}
+                  {/* 2. REAL NAME + BLUE TICK */}
                   <Title level={4} style={{ marginBottom: 5 }}>
                     {advisor.name} <CheckCircleFilled style={{ color: '#1890ff', fontSize: 18 }} />
                   </Title>
 
-                  {/* Star Rating (Fake for now) */}
-                  <Rate disabled defaultValue={5} style={{ fontSize: 14, color: '#fadb14' }} />
-                  <Text type="secondary" style={{ marginLeft: 5 }}>(12)</Text>
+                  {/* 3. RATINGS (Static for now) */}
+                  <div style={{ marginBottom: 10 }}>
+                     <Rate disabled defaultValue={5} style={{ fontSize: 14, color: '#fadb14' }} />
+                     <Text type="secondary" style={{ marginLeft: 5 }}>(12)</Text>
+                  </div>
 
-                  {/* Bio */}
-                  <p style={{ marginTop: 15, color: '#666', height: 42, overflow: 'hidden', fontSize: 14 }}>
-                    {advisor.bio || `Expert in ${advisor.location || "Travel"} & Local Gems.`}
+                  {/* 4. REAL BIO */}
+                  <p style={{ color: '#666', height: 42, overflow: 'hidden', fontSize: 14, lineHeight: '1.4' }}>
+                    {advisor.bio || "Expert in local hidden gems & itineraries."}
                   </p>
 
-                  {/* Tags */}
+                  {/* 5. TAGS (Location + Category) */}
                   <div style={{ marginTop: 15 }}>
                     <Tag color="blue">{advisor.location || "Global"}</Tag>
-                    <Tag color="cyan">Itinerary</Tag>
+                    <Tag color="cyan">Trekking</Tag>
                   </div>
 
                 </Card>
