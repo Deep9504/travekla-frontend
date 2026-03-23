@@ -1,25 +1,20 @@
 # 🚀 Travekla – Travel Management App
 
-A full-stack travel booking application that allows users to explore destinations, book trips, and manage travel plans.
+A full-stack travel booking platform that allows users to explore destinations, book trips, and manage travel plans in a seamless way.
 
 ---
 
 ## 🔗 Live Demo
-👉 (Add your deployed link here)
-
----
-
-## 📸 Screenshots
-(Add 2–3 screenshots here)
+👉 https://travekla.com
 
 ---
 
 ## ✨ Features
-- User authentication (JWT-based login/signup)
-- Trip booking system
-- Dashboard to manage bookings
-- Responsive UI
-- REST API integration
+- Secure user authentication (JWT-based login/signup)
+- Trip booking and management system
+- Interactive dashboard for users
+- RESTful API integration
+- Fully responsive UI
 
 ---
 
