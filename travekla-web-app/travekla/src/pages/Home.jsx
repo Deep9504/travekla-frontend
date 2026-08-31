@@ -1,0 +1,352 @@
+import React, { useState, useEffect, useContext } from 'react';
+import { Row, Col, Typography, Button, Input, Card, Carousel, Tag, Empty, Avatar, Spin, message, theme } from 'antd';
+import {
+  SearchOutlined, RocketOutlined, FireOutlined, DeleteOutlined,
+  BankOutlined, CrownOutlined, SafetyCertificateOutlined,
+  CheckCircleFilled, UserOutlined, ArrowRightOutlined, EnvironmentOutlined, CalendarOutlined, TeamOutlined
+} from '@ant-design/icons';
+import { Link, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
+
+const { Title, Text, Paragraph } = Typography;
+
+// --- MOCK DATA ---
+const liveActivities = [
+  "Rohan just joined 'Mumbai to Goa' trip",
+  "New trip 'Kerala Backwaters' was just published",
+  "Sanya reached Level 5 Traveler status",
+  "'Manali Trek' pot size reached ₹3,000"
+];
+
+const bestPlaces = ["Goa", "Manali", "Kerala", "Ladakh"];
+
+const Home = () => {
+  const { user } = useContext(AuthContext);
+  const { token } = theme.useToken();
+  const navigate = useNavigate();
+
+  // STATE
+  const [trips, setTrips] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
+
+  // --- FETCH TRIPS ---
+  const fetchTrips = async (search = "") => {
+    setLoading(true);
+    try {
+      const res = await fetch(`https://travekla-web-app.onrender.com/api/trips?search=${search}`);
+      const data = await res.json();
+      setTrips(data);
+    } catch (error) {
+      console.error("Failed to fetch trips");
+      message.error("Failed to load global feed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTrips();
+  }, []);
+
+  const normalizeId = (val) => {
+    if (!val) return "undefined";
+    if (typeof val === 'string') return val;
+    if (val._id) return normalizeId(val._id);
+    if (val.id) return normalizeId(val.id);
+    return String(val);
+  };
+
+  // --- HANDLE DELETE TRIP ---
+  const handleDelete = async (e, tripId) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!window.confirm("Are you sure you want to delete this trip?")) return;
+
+    try {
+      const res = await fetch(`https://travekla-web-app.onrender.com/api/trips/${tripId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        message.success("Trip deleted!");
+        fetchTrips(); // Refresh the list instantly
+      } else {
+        message.error("Failed to delete");
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleSearch = (e) => {
+    const value = typeof e === 'string' ? e : e.target.value;
+    setSearchText(value);
+    fetchTrips(value);
+  };
+
+  // --- FILTER LOGIC ---
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const filteredGroups = trips?.filter(group => {
+    if (activeCategory === 'All') return true;
+    const content = (group.description + " " + group.to + " " + group.from).toLowerCase();
+    return content.includes(activeCategory.toLowerCase());
+  });
+
+  const upcomingGroups = filteredGroups?.filter(g => new Date(g.date) >= today);
+  const pastGroups = filteredGroups?.filter(g => new Date(g.date) < today);
+
+  // --- RENDER CARD (MINIMALIST & HIGH-END) ---
+  const renderTripCard = (group, isPast = false) => {
+    const currentUserId = normalizeId(user);
+    const creatorId = normalizeId(group.creator);
+
+    const isGuest = !user;
+    const isCreator = !isGuest && (currentUserId === creatorId);
+    const isMember = !isGuest && group.members?.some(m => normalizeId(m) === currentUserId);
+    const isAdvisorTrip = group.creator?.role === 'advisor'; // FIXED: Missing variable
+
+    // Dynamic Image based on destination (Mock)
+    const getCoverImage = (dest) => {
+      const d = dest.toLowerCase();
+      if (d.includes('goa')) return 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&q=80';
+      if (d.includes('manali') || d.includes('himalaya')) return 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=800&q=80';
+      if (d.includes('kerala')) return 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&q=80';
+      if (d.includes('ladakh')) return 'https://images.unsplash.com/photo-1581793434118-d07802d36988?w=800&q=80';
+      return 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&q=80'; // Generic Travel
+    };
+
+    return (
+      <Col key={group._id} xs={24} sm={12} lg={8} xl={6}>
+        <Link to={`/trip/${group._id}`} style={{ textDecoration: 'none' }}>
+          <div
+            style={{
+              cursor: 'pointer',
+              borderRadius: 12,
+              overflow: 'hidden',
+              transition: 'all 0.3s ease',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              border: '1px solid transparent', // Default border
+              color: token.colorPrimary,
+              background: token.colorBgContainer,
+              boxShadow: token.boxShadowTertiary // Base shadow
+            }}
+            className="hover:shadow-lg"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-4px)';
+              e.currentTarget.style.boxShadow = token.boxShadowlg;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = token.boxShadowTertiary;
+            }}
+          >
+            {/* IMAGE CONTAINER */}
+            <div style={{ position: 'relative', paddingTop: '66%', background: '#f0f2f5' }}> {/* 3:2 Aspect Ratio */}
+              <img
+                alt={group.to}
+                src={getCoverImage(group.to)}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  filter: isPast ? 'grayscale(100%)' : 'none'
+                }}
+              />
+              {/* Replaced isCreator block with new Tag and text */}
+              <Tag color={isAdvisorTrip ? token.colorLinkHover : token.colorPrimary} style={{ position: 'absolute', top: 10, right: 10, border: 'none', fontWeight: 600, padding: '4px 8px', borderRadius: 4, color: 'white', fontSize: 11 }}>
+                {isAdvisorTrip ? "ADVISOR TRIP" : "YOUR TRIP"}
+              </Tag>
+            </div>
+
+            {/* CONTENT */}
+            <div style={{ padding: '16px 4px' }}>
+
+              {/* Header: Title & Rating/Date */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                <Title level={5} style={{ margin: 0, fontSize: 16, fontWeight: 600, color: token.colorTextHeading, lineHeight: 1.4 }}>
+                  {group.to}
+                </Title>
+                <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, color: '#2d3436' }}>
+                  <span style={{ fontWeight: 600 }}>★ 4.8</span>
+                </div>
+              </div>
+
+              {/* Metadata: Distance/Creator */}
+              <Text type="secondary" style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>
+                Hosted by {group.creator?.name?.split(' ')[0] || 'Travekla'}
+              </Text>
+              <Text type="secondary" style={{ display: 'block', fontSize: 14 }}>
+                {new Date(group.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} • {group.capacity} spots left
+              </Text>
+
+              {/* Footer: Price */}
+              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center' }}>
+                <Text strong style={{ fontSize: 15, color: '#2d3436' }}>₹{group.budget || group.price || 999}</Text>
+                <Text type="secondary" style={{ fontSize: 14, marginLeft: 4, fontWeight: 400 }}>total</Text>
+              </div>
+
+            </div>
+          </div>
+        </Link>
+      </Col>
+    );
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: token.colorBgLayout }}>
+
+      {/* 1. HERO SECTION */}
+      <div style={{
+        backgroundImage: 'url("https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=2070&auto=format&fit=crop")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        padding: '80px 20px 140px 20px',
+        textAlign: 'center',
+        position: 'relative',
+      }}>
+        {/* DARKER Overlay for Better Contrast */}
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.65)' }}></div>
+
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <Title style={{ color: 'white', fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', margin: 0, fontWeight: 800, letterSpacing: 1 }}>
+            Find Your Tribe.
+          </Title>
+          <Text style={{ color: 'rgba(255,255,255,0.95)', fontSize: '1.5rem', display: 'block', marginTop: 10, fontWeight: 500 }}>
+            Don't travel solo. Travel <span style={{ fontWeight: '800', color: token.colorLinkHover, textDecoration: 'underline' }}>Ekla</span>, together.
+          </Text>
+
+          <div style={{ marginTop: 30 }}>
+            <Link to="/create-trip">
+              <Button type="primary" size="large" icon={<RocketOutlined />} style={{ height: 52, padding: '0 45px', fontSize: 18, borderRadius: 30, fontWeight: 'bold', boxShadow: `0 4px 15px ${token.colorPrimary}40` }}>
+                Create a Trip
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. FLOATING SEARCH BOX (High Contrast) */}
+      <div style={{ maxWidth: 900, margin: '-50px auto 40px auto', padding: '0 20px', position: 'relative', zIndex: 5 }}>
+        <Card style={{ borderRadius: 16, boxShadow: '0 15px 40px rgba(0,0,0,0.15)', border: 'none' }} bodyStyle={{ padding: '25px 30px' }}>
+
+          <Input
+            size="large"
+            placeholder="Search destination (e.g. Goa, Manali)"
+            prefix={<SearchOutlined style={{ color: token.colorText, fontSize: 20, fontWeight: 'bold' }} />}
+            value={searchText}
+            onChange={handleSearch}
+            style={{ borderRadius: 8, background: token.colorBgLayout, border: `1px solid ${token.colorSplit}`, padding: '12px 20px', fontSize: 16, color: token.colorText }}
+          />
+
+          <div style={{ marginTop: 15, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Text strong style={{ color: token.colorText }}><FireOutlined style={{ color: token.colorLinkHover }} /> Trending:</Text>
+            {bestPlaces.map(place => (
+              <Tag key={place} style={{ cursor: 'pointer', borderRadius: 6, border: `1px solid ${token.colorLinkHover}`, background: token.colorBgLayout, color: token.colorLinkHover, padding: '4px 12px', fontWeight: 600 }} onClick={() => handleSearch(place)}>
+                {place}
+              </Tag>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* 3. LIVE TICKER (High Visibility Dark Bar) */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px' }}>
+        <div style={{
+          background: token.colorPrimary, // Dark background
+          color: 'white',
+          borderRadius: 8,
+          padding: '12px 20px',
+          marginBottom: 40,
+          display: 'flex',
+          alignItems: 'center',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+        }}>
+          <Tag color={token.colorLinkHover} style={{ borderRadius: 4, marginRight: 15, fontWeight: 'bold', padding: '2px 10px', border: 'none' }}>🔴 LIVE NOW</Tag>
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <Carousel autoplay dots={false} effect="fade" autoplaySpeed={3000} style={{ width: '100%' }}>
+              {liveActivities.map((msg, i) => (
+                <div key={i}><Text style={{ color: 'white', fontSize: 15, fontWeight: 500 }}>{msg}</Text></div>
+              ))}
+            </Carousel>
+          </div>
+        </div>
+
+        {/* Categories */}
+        <div style={{ textAlign: 'center', marginBottom: 30 }}>
+          {['All', 'Beach', 'Trek', 'Temple', 'Road'].map(cat => (
+            <Button
+              key={cat}
+              shape="round"
+              size="large"
+              type={activeCategory === (cat === 'All' ? 'All' : cat.toLowerCase()) ? 'primary' : 'text'}
+              onClick={() => setActiveCategory(cat === 'All' ? 'All' : cat.toLowerCase())}
+              style={{ margin: '0 5px', fontWeight: 600, color: activeCategory === (cat === 'All' ? 'All' : cat.toLowerCase()) ? 'white' : '#595959' }}
+            >
+              {cat}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. TRIP GRID */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px 80px' }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" tip="Loading trips..." /></div>
+        ) : (
+          <>
+            <Title level={3} style={{ marginBottom: 20, color: token.colorTextHeading }}>🚀 Upcoming Adventures</Title>
+            <Row gutter={[24, 24]}>
+              {upcomingGroups?.length > 0 ? upcomingGroups.map(g => renderTripCard(g, false)) : (
+                <Col span={24}><Empty description="No trips found matching your search." /></Col>
+              )}
+            </Row>
+
+            {pastGroups?.length > 0 && (
+              <>
+                <Title level={3} style={{ marginTop: 60, marginBottom: 20, color: '#8c8c8c' }}>🏁 Past Trips</Title>
+                <Row gutter={[24, 24]}>
+                  {pastGroups.map(g => renderTripCard(g, true))}
+                </Row>
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* 5. WHY TRAVEKLA */}
+      <div style={{ background: 'white', padding: '80px 20px', borderTop: '1px solid #f0f0f0' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', textAlign: 'center' }}>
+          <Title level={2} style={{ marginBottom: 50, color: '#262626' }}>Why Travel with Us?</Title>
+          <Row gutter={[32, 32]}>
+            {[
+              { icon: <BankOutlined />, color: '#1890ff', title: 'No-Flake Pot', desc: 'Secure deposits ensure no last-minute cancellations.' },
+              { icon: <SafetyCertificateOutlined />, color: '#52c41a', title: 'Verified & Safe', desc: 'ID checks & Video KYC for 100% real travelers.' },
+              { icon: <CrownOutlined />, color: '#faad14', title: 'Vibe Match', desc: 'Find people who match your energy.' }
+            ].map((feature, i) => (
+              <Col xs={24} md={8} key={i}>
+                <Card hoverable style={{ border: '1px solid #f0f0f0', boxShadow: 'none', borderRadius: 16, height: '100%' }}>
+                  <div style={{ fontSize: 40, color: feature.color, marginBottom: 15 }}>{feature.icon}</div>
+                  <Title level={4} style={{ color: '#262626' }}>{feature.title}</Title>
+                  <Paragraph type="secondary">{feature.desc}</Paragraph>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </div>
+      </div>
+
+    </div>
+  );
+};
+
+export default Home;

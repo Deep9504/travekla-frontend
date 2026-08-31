@@ -1,0 +1,171 @@
+import React, { useState, useEffect, useContext } from 'react';
+import { Layout, Menu, Card, Row, Col, Statistic, Table, Tag, Button, Tabs, message, Spin, Typography } from 'antd';
+import {
+  DashboardOutlined, IdcardOutlined, GlobalOutlined,
+  CheckCircleOutlined, LogoutOutlined, ReloadOutlined
+} from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../../context/AuthContext'; // Check this path matches your folder structure
+
+const { Header, Content, Sider } = Layout;
+
+const AdminDashboard = () => {
+  const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+
+  // REAL DATA STATES
+  const [stats, setStats] = useState({ revenue: 0, pendingKYC: 0, pendingTrips: 0 });
+  const [kycRequests, setKycRequests] = useState([]);
+  const [tripRequests, setTripRequests] = useState([]);
+
+  // --- FETCH DATA ---
+  const fetchAllData = async () => {
+    setLoading(true);
+    try {
+      const statRes = await fetch('https://travekla-web-app.onrender.com/api/admin/stats');
+      const statData = await statRes.json();
+      setStats(statData);
+
+      const kycRes = await fetch('https://travekla-web-app.onrender.com/api/admin/kyc-pending');
+      const kycData = await kycRes.json();
+      setKycRequests(kycData);
+
+      const tripRes = await fetch('https://travekla-web-app.onrender.com/api/admin/trips-pending');
+      const tripData = await tripRes.json();
+      setTripRequests(tripData);
+
+    } catch (error) {
+      console.error("Fetch Error:", error);
+      message.error("Failed to load admin data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Auto-load data if admin
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      fetchAllData();
+    }
+  }, [user]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  // --- ACTIONS ---
+  const handleKYCAction = async (userId, action) => {
+    try {
+      await fetch('https://travekla-web-app.onrender.com/api/admin/kyc-action', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action })
+      });
+      message.success(`User ${action === 'approve' ? 'Verified' : 'Rejected'}`);
+      fetchAllData();
+    } catch (error) {
+      message.error("Action failed");
+    }
+  };
+
+  const verifyTrip = async (tripId) => {
+    try {
+      await fetch(`https://travekla-web-app.onrender.com/api/admin/trip-verify/${tripId}`, {
+        method: 'PUT'
+      });
+      message.success("Trip Verified & Published! ✅");
+      fetchAllData();
+    } catch (error) {
+      message.error("Action failed");
+    }
+  };
+
+  // --- TABS ---
+  const OverviewTab = () => (
+    <Row gutter={16}>
+      <Col span={8}><Card><Statistic title="Total Revenue" value={stats.revenue} prefix="₹" valueStyle={{ color: '#3f8600' }} /></Card></Col>
+      <Col span={8}><Card><Statistic title="Pending KYCs" value={stats.pendingKYC} prefix={<IdcardOutlined />} /></Card></Col>
+      <Col span={8}><Card><Statistic title="Pending Trips" value={stats.pendingTrips} prefix={<GlobalOutlined />} /></Card></Col>
+    </Row>
+  );
+
+  const TripsTab = () => (
+    <Table
+      dataSource={tripRequests}
+      rowKey="_id"
+      locale={{ emptyText: "All trips are verified!" }}
+      columns={[
+        { title: 'Trip Name', render: (_, r) => `${r.from} to ${r.to}` },
+        { title: 'Creator', render: (_, r) => r.creator?.name || "Unknown" },
+        { title: 'Status', render: () => <Tag color="gold">Unverified</Tag> },
+        {
+          title: 'Action', render: (_, r) => (
+            <Button type="primary" size="small" onClick={() => verifyTrip(r._id)}>Verify & Publish</Button>
+          )
+        }
+      ]}
+    />
+  );
+
+  const KycTab = () => (
+    <Table
+      dataSource={kycRequests}
+      rowKey="_id"
+      locale={{ emptyText: "No pending KYC requests" }}
+      columns={[
+        { title: 'Name', dataIndex: 'name' },
+        { title: 'Email', dataIndex: 'email' },
+        { title: 'Status', render: () => <Tag color="orange">Pending</Tag> },
+        {
+          title: 'Action', render: (_, r) => (
+            <Button type="primary" size="small" icon={<CheckCircleOutlined />} onClick={() => handleKYCAction(r._id, 'approve')}>Approve</Button>
+          )
+        }
+      ]}
+    />
+  );
+
+  // 🛡️ SECURITY CHECK
+  if (!user || user.role !== 'admin') {
+    return (
+      <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+        <h2>🚫 Access Denied</h2>
+        <p>You must be an Admin to view this page.</p>
+        <Button type="primary" onClick={() => navigate('/login')}>Go to Login</Button>
+      </div>
+    );
+  }
+
+  return (
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider collapsible>
+        <div style={{ height: 32, margin: 16, color: 'white', textAlign: 'center', fontWeight: 'bold', lineHeight: '32px' }}>ADMIN</div>
+        <Menu theme="dark" defaultSelectedKeys={['1']} mode="inline" items={[
+          { key: '1', icon: <DashboardOutlined />, label: 'Dashboard' },
+          { key: '2', icon: <LogoutOutlined />, label: 'Logout', onClick: handleLogout }
+        ]} />
+      </Sider>
+      <Layout>
+        <Header style={{ background: '#fff', padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 20, fontWeight: 'bold' }}>Super Admin Control</span>
+          <Button icon={<ReloadOutlined />} onClick={fetchAllData}>Refresh Data</Button>
+        </Header>
+        <Content style={{ margin: '16px' }}>
+          <div style={{ padding: 24, minHeight: 360, background: '#fff' }}>
+            {loading ? <Spin size="large" style={{ display: 'block', margin: '50px auto' }} /> : (
+              <Tabs defaultActiveKey="1" items={[
+                { key: '1', label: 'Overview', children: <OverviewTab /> },
+                { key: '2', label: 'KYC Requests', children: <KycTab /> },
+                { key: '3', label: 'Trip Verification', children: <TripsTab /> },
+              ]} />
+            )}
+          </div>
+        </Content>
+      </Layout>
+    </Layout>
+  );
+};
+
+export default AdminDashboard;
